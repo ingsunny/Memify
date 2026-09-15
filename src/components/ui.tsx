@@ -1,0 +1,177 @@
+import { useEffect, useRef, type ReactNode } from "react";
+import {
+  X,
+  Brain,
+  Shapes,
+  Languages,
+  Code2,
+  Layers,
+  ArrowUpRight,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import type { Deck } from "../types";
+import { dueCards } from "../types";
+export function Modal({
+  title,
+  children,
+  close,
+  wide = false,
+}: {
+  title: string;
+  children: ReactNode;
+  close: () => void;
+  wide?: boolean;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    const el = ref.current!;
+    const previous = document.activeElement as HTMLElement;
+    el.showModal();
+    const cancel = (e: Event) => {
+      e.preventDefault();
+      closeRef.current();
+    };
+    el.addEventListener("cancel", cancel);
+    return () => {
+      el.removeEventListener("cancel", cancel);
+      el.close();
+      previous?.focus();
+    };
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className={`modal ${wide ? "wide" : ""}`}
+      aria-labelledby="dialog-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+    >
+      <div className="modal-head">
+        <h2 id="dialog-title">{title}</h2>
+        <button
+          className="icon-button"
+          aria-label="Close dialog"
+          onClick={close}
+        >
+          <X size={20} />
+        </button>
+      </div>
+      {children}
+    </dialog>
+  );
+}
+export function DeckIcon({
+  icon,
+  size = 26,
+}: {
+  icon?: string;
+  size?: number;
+}) {
+  const Icon =
+    icon === "brain"
+      ? Brain
+      : icon === "shapes"
+        ? Shapes
+        : icon === "languages"
+          ? Languages
+          : icon === "code"
+            ? Code2
+            : Layers;
+  return <Icon size={size} strokeWidth={1.6} />;
+}
+export function DeckCard({
+  deck,
+  discover = false,
+}: {
+  deck: Deck;
+  discover?: boolean;
+}) {
+  const due = dueCards(deck).length;
+  return (
+    <Link
+      className={`deck-card ${deck.color}`}
+      to={`${discover ? "/discover" : "/decks"}/${deck.id}`}
+    >
+      <div className="deck-art">
+        <span className="deck-glyph">
+          <DeckIcon icon={deck.icon} size={34} />
+        </span>
+        <span className="art-orbit orbit-one" />
+        <span className="art-orbit orbit-two" />
+        <span className="card-corner">
+          <ArrowUpRight size={18} />
+        </span>
+      </div>
+      <div className="deck-copy">
+        <span className="eyebrow">{deck.category}</span>
+        <h3>{deck.title}</h3>
+        <p>{deck.description}</p>
+        <div className="deck-meta">
+          <span>
+            <Layers size={14} />
+            {deck.cards.length} cards
+          </span>
+          {discover ? (
+            <span className="collection-label">Starter collection</span>
+          ) : (
+            <span className={due ? "due-label" : "muted"}>
+              {due ? `${due} to review` : "All caught up"}
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+export function Empty({
+  icon,
+  title,
+  text,
+  children,
+}: {
+  icon?: ReactNode;
+  title: string;
+  text: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="empty-state">
+      {icon}
+      <h2>{title}</h2>
+      <p>{text}</p>
+      {children}
+    </div>
+  );
+}
+export function ErrorMessage({ message }: { message: string }) {
+  return message ? (
+    <p className="form-error" role="alert">
+      {message}
+    </p>
+  ) : null;
+}
+export function PageTitle({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow?: string;
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="page-heading">
+      <div>
+        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
