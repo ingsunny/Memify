@@ -3653,3 +3653,31 @@ summary:focus-visible,
 .illustration-dots b {
   background: var(--green-bright);
 }
+
+/* ============================================================
+   Base UI scale.
+   The layout is built almost entirely in hardcoded px (~1000 of
+   them), so the root font-size alone can't scale it. `zoom` on
+   the root scales layout the way a browser zoom does: fixed
+   positioning, vh units and media queries all stay coherent,
+   which a transform: scale() on body would break.
+   ============================================================ */
+:root {
+  zoom: 1.25;
+}
+
+/* At 125% the phone viewport is effectively ~310px. The hero
+   illustration can't fit beside the copy without clipping, so drop the
+   decoration and let the text use the full card, as the design already
+   does for other ornaments at this size. */
+@media (max-width: 480px) {
+  .hero-illustration {
+    display: none;
+  }
+  .hero-content {
+    width: 100%;
+  }
+  .hero-content p {
+    max-width: none;
+  }
+}
