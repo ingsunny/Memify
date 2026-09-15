@@ -20,6 +20,73 @@ export function openDatabase(path = "data/memify.db") {
     CREATE INDEX IF NOT EXISTS reviews_user_time ON reviews(user_id, created);
     CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires);
     INSERT OR IGNORE INTO migrations VALUES (1, unixepoch() * 1000);
+
+    -- Migration 2: subscriptions, the shared deck library, and workspace tools.
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      plan TEXT NOT NULL DEFAULT 'free',
+      status TEXT NOT NULL DEFAULT 'active',
+      renews INTEGER,
+      reference TEXT,
+      updated INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS shared_decks (
+      id TEXT PRIMARY KEY,
+      deck_id TEXT REFERENCES decks(id) ON DELETE SET NULL,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      author TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT 'Personal',
+      color TEXT NOT NULL DEFAULT 'sage',
+      cards TEXT NOT NULL,
+      card_count INTEGER NOT NULL DEFAULT 0,
+      votes INTEGER NOT NULL DEFAULT 0,
+      saves INTEGER NOT NULL DEFAULT 0,
+      seeded INTEGER NOT NULL DEFAULT 0,
+      created INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS shared_votes (
+      shared_id TEXT NOT NULL REFERENCES shared_decks(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created INTEGER NOT NULL,
+      PRIMARY KEY (shared_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS notes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT 'Untitled',
+      body TEXT NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0,
+      updated INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS workspace (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      state TEXT NOT NULL DEFAULT '{}',
+      updated INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS focus_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      minutes INTEGER NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'focus',
+      created INTEGER NOT NULL
+    );
+    -- Local record of generation usage so free-tier quota can be enforced
+    -- without a round trip to the cloud service.
+    CREATE TABLE IF NOT EXISTS generations_local (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      cards INTEGER NOT NULL DEFAULT 0,
+      created INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS generations_local_user ON generations_local(user_id, created);
+    CREATE INDEX IF NOT EXISTS shared_rank ON shared_decks(votes DESC, created DESC);
+    CREATE INDEX IF NOT EXISTS shared_category ON shared_decks(category);
+    CREATE INDEX IF NOT EXISTS shared_owner ON shared_decks(user_id);
+    CREATE INDEX IF NOT EXISTS notes_user ON notes(user_id, position);
+    CREATE INDEX IF NOT EXISTS focus_user_time ON focus_sessions(user_id, created);
+    INSERT OR IGNORE INTO migrations VALUES (2, unixepoch() * 1000);
   `);
   return db;
 }

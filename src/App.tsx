@@ -24,6 +24,10 @@ import { Generate } from "./pages/Generate";
 import { Progress } from "./pages/Progress";
 import { Settings } from "./pages/Settings";
 import { AccountLink } from "./pages/AccountLink";
+import { Discover } from "./pages/Discover";
+import { SharedDeck } from "./pages/SharedDeck";
+import { Workspace } from "./workspace/Workspace";
+import { Upgrade } from "./components/Upgrade";
 export default function App() {
   const {
     user,
@@ -35,6 +39,9 @@ export default function App() {
     notice,
     decks,
     catalog,
+    upgradeReason,
+    pro,
+    upgrade,
   } = useStore();
   const [menu, setMenu] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -115,6 +122,21 @@ export default function App() {
               <ArrowUpRight size={14} />
             </Link>
           </div>
+          {user && !pro && (
+            <button
+              className="sidebar-upgrade"
+              onClick={() =>
+                upgrade(
+                  "Unlimited AI sets, unlimited decks, and every study tool.",
+                )
+              }
+            >
+              <Sparkles size={15} />
+              <span>
+                Go Pro<small>Unlimited AI, decks and tools</small>
+              </span>
+            </button>
+          )}
           <NavLink className="settings-link" to="/settings">
             <Settings2 size={18} />
             Settings
@@ -216,8 +238,8 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Today />} />
               <Route path="/library" element={<Library />} />
-              <Route path="/discover" element={<Library discover />} />
-              <Route path="/discover/:id" element={<DeckDetail discover />} />
+              <Route path="/discover" element={<Discover />} />
+              <Route path="/discover/:id" element={<SharedDeck />} />
               <Route path="/decks/:id" element={<DeckDetail />} />
               <Route
                 path="/study/:id"
@@ -256,6 +278,8 @@ export default function App() {
           </a>
         </footer>
       </div>
+      <Workspace />
+      {upgradeReason !== null && <Upgrade />}
       {authMode && <Auth />}
       {notice && (
         <div className="toast" role="status">

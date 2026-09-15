@@ -9,8 +9,8 @@ import {
   Eye,
 } from "lucide-react";
 import { useStore } from "../store";
-import { dueCards, type Card } from "../types";
-import { send } from "../api";
+import { dueCards, type Card, type Deck } from "../types";
+import { api, send } from "../api";
 import { Empty, ErrorMessage } from "../components/ui";
 export function Study() {
   const { id } = useParams();
@@ -18,11 +18,28 @@ export function Study() {
   const { decks, catalog, refresh } = useStore();
   const preview = params.has("preview");
   const quiz = params.get("mode") === "quiz";
+  // A preview id may be a static starter slug or a shared-library deck;
+  // the latter is fetched on demand since it isn't held in the store.
+  const [shared, setShared] = useState<Deck | null>(null);
+  useEffect(() => {
+    if (!preview || !id || catalog.some((d) => d.id === id)) return;
+    void api<Deck>(`/shared/${id}`)
+      .then((d) => setShared({ ...d, cards: d.cards || [] }))
+      .catch(() => undefined);
+  }, [preview, id, catalog]);
   const sources = preview
-    ? catalog.filter((d) => d.id === id)
+    ? catalog.some((d) => d.id === id)
+      ? catalog.filter((d) => d.id === id)
+      : shared
+        ? [shared]
+        : []
     : id === "all"
       ? decks
       : decks.filter((d) => d.id === id);
+  // The queue is snapshotted once, so hold the render until a shared
+  // deck has loaded; otherwise it would freeze as empty.
+  const awaitingShared =
+    preview && !!id && !catalog.some((d) => d.id === id) && !shared;
   const [queue] = useState<Card[]>(() => {
     const due = sources.flatMap(dueCards);
     return quiz || preview || !due.length
@@ -87,6 +104,13 @@ export function Study() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   });
+  if (awaitingShared)
+    return (
+      <div className="loading-state">
+        <span className="spinner" />
+        Opening the collection…
+      </div>
+    );
   if (!queue.length)
     return (
       <Empty

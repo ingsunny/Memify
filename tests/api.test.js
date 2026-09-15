@@ -234,3 +234,118 @@ test("review scheduling handles forgetting, progression and ease bounds", () => 
   assert.equal(schedule({ ease: 3.5 }, "easy").ease, 3.5);
   assert.throws(() => schedule({}, "invalid"));
 });
+
+test("shared library ranks, votes once per user, and saves into a library", async () => {
+  const a = await request("/auth/signup", profile("voter-a@example.com"));
+  const b = await request("/auth/signup", profile("voter-b@example.com"));
+  const listing = await request("/shared?sort=top");
+  assert.equal(listing.status, 200);
+  assert.ok(listing.body.decks.length > 10, "seeded decks are listed");
+  assert.ok(listing.body.categories.length > 1, "categories are grouped");
+  // Top sort is descending by votes.
+  const votes = listing.body.decks.map((d) => d.votes);
+  assert.deepEqual(
+    votes,
+    [...votes].sort((x, y) => y - x),
+  );
+
+  const target = listing.body.decks[0];
+  const first = await request(`/shared/${target.id}/vote`, {}, a.cookie);
+  assert.equal(first.body.voted, true);
+  assert.equal(first.body.votes, target.votes + 1);
+  // Voting again from the same account retracts rather than stacking.
+  const again = await request(`/shared/${target.id}/vote`, {}, a.cookie);
+  assert.equal(again.body.voted, false);
+  assert.equal(again.body.votes, target.votes);
+  // A different account contributes its own vote.
+  const other = await request(`/shared/${target.id}/vote`, {}, b.cookie);
+  assert.equal(other.body.votes, target.votes + 1);
+
+  const saved = await request(`/shared/${target.id}/save`, {}, a.cookie);
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.title, target.title);
+  assert.ok(saved.body.cards.length > 0, "cards come across on save");
+  // Saving twice reuses the same deck instead of duplicating it.
+  const resaved = await request(`/shared/${target.id}/save`, {}, a.cookie);
+  assert.equal(resaved.body.id, saved.body.id);
+
+  // Anonymous users can read but not vote.
+  assert.equal((await request(`/shared/${target.id}/vote`, {})).status, 401);
+});
+
+test("free plan limits publishing, deck count and note tabs", async () => {
+  const user = await request("/auth/signup", profile("limits@example.com"));
+  const me = await request("/me", null, user.cookie);
+  assert.equal(me.body.plan.pro, false);
+  assert.equal(me.body.plan.limits.noteTabs, 1);
+  assert.equal(me.body.plan.limits.maxCardsPerGeneration, 20);
+
+  // Publishing is a paid capability.
+  const deck = await request(
+    "/decks",
+    { title: "Mine", cards: [{ front: "a", back: "b" }] },
+    user.cookie,
+  );
+  const published = await request(
+    "/shared",
+    { deckId: deck.body.id },
+    user.cookie,
+  );
+  assert.equal(published.status, 402);
+  assert.match(published.body.error, /Pro/);
+
+  // One note on the free plan; a second is refused.
+  const note = await request("/notes", { title: "n", body: "" }, user.cookie);
+  assert.equal(note.status, 201);
+  const second = await request("/notes", { title: "m", body: "" }, user.cookie);
+  assert.equal(second.status, 402);
+
+  // Notes are private to their owner.
+  const stranger = await request("/auth/signup", profile("nosy@example.com"));
+  const theirs = await request("/notes", null, stranger.cookie);
+  assert.deepEqual(theirs.body, []);
+  assert.equal(
+    (
+      await request(
+        `/notes/${note.body.id}`,
+        { title: "hacked", body: "x" },
+        stranger.cookie,
+        "PUT",
+      )
+    ).status,
+    404,
+  );
+
+  // The deck ceiling is enforced (free plan holds 6).
+  for (let i = 0; i < 8; i++)
+    await request(
+      "/decks",
+      { title: `Deck ${i}`, cards: [{ front: "a", back: "b" }] },
+      user.cookie,
+    );
+  const overflow = await request(
+    "/decks",
+    { title: "Too many", cards: [{ front: "a", back: "b" }] },
+    user.cookie,
+  );
+  assert.equal(overflow.status, 402);
+});
+
+test("workspace layout round-trips and rejects oversized state", async () => {
+  const user = await request("/auth/signup", profile("layout@example.com"));
+  assert.deepEqual((await request("/workspace", null, user.cookie)).body, {});
+  const state = { notes: { x: 10, y: 20, w: 340, h: 380, open: true } };
+  assert.equal(
+    (await request("/workspace", { state }, user.cookie, "PUT")).status,
+    200,
+  );
+  assert.deepEqual(
+    (await request("/workspace", null, user.cookie)).body,
+    state,
+  );
+  const huge = { blob: "x".repeat(9000) };
+  assert.equal(
+    (await request("/workspace", { state: huge }, user.cookie, "PUT")).status,
+    413,
+  );
+});

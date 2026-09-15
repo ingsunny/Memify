@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "./api";
-import type { Deck, User, Review } from "./types";
+import type { Deck, User, Review, PlanState } from "./types";
 type Store = {
   user: User | null;
   decks: Deck[];
@@ -21,6 +21,11 @@ type Store = {
   closeAuth: () => void;
   notify: (message: string) => void;
   notice: string;
+  plan: PlanState | null;
+  pro: boolean;
+  upgrade: (reason?: string) => void;
+  upgradeReason: string | null;
+  closeUpgrade: () => void;
 };
 const Context = createContext<Store>(null!);
 export const useStore = () => useContext(Context);
@@ -33,13 +38,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
   const [notice, setNotice] = useState("");
+  const [plan, setPlan] = useState<PlanState | null>(null);
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
   const refresh = useCallback(async () => {
     try {
       const [me, collections] = await Promise.all([
-        api<{ user: User | null }>("/me"),
+        api<{ user: User | null; plan: PlanState | null }>("/me"),
         api<Deck[]>("/catalog"),
       ]);
       setUser(me.user);
+      setPlan(me.plan);
       setCatalog(collections);
       if (me.user) {
         const [saved, progress] = await Promise.all([
@@ -82,6 +90,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         closeAuth: () => setAuthMode(null),
         notify: setNotice,
         notice,
+        plan,
+        pro: Boolean(plan?.pro),
+        upgrade: (reason = "") => setUpgradeReason(reason),
+        upgradeReason,
+        closeUpgrade: () => setUpgradeReason(null),
       }}
     >
       {children}

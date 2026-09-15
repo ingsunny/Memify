@@ -3681,3 +3681,566 @@ summary:focus-visible,
     max-width: none;
   }
 }
+
+/* ============================================================
+   Workspace tools, shared library and plans.
+   These reuse the existing card, pill and panel vocabulary so the
+   new surfaces read as part of the app rather than bolted on.
+   ============================================================ */
+
+/* --- Dock: a quiet pill, bottom-right, out of the reading path --- */
+.dock {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: flex;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  border: 1px solid #dfeade;
+  box-shadow: var(--shadow-soft);
+}
+.dock button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: transparent;
+  color: #5c6e58;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+.dock button:hover {
+  background: #eaf4ec;
+  color: var(--green);
+}
+.dock button.active {
+  background: linear-gradient(140deg, #d9f2df, #c9ebd5);
+  color: #1f5c39;
+}
+
+/* --- Floating panels --- */
+.float {
+  position: fixed;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #dfeade;
+  box-shadow: 0 18px 46px rgba(31, 84, 55, 0.16);
+  overflow: hidden;
+}
+.float-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 13px;
+  font-size: 11px;
+  color: #4d6354;
+  background: linear-gradient(180deg, #f5faf5, #eff7f0);
+  border-bottom: 1px solid #e6efe6;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.float-bar:active {
+  cursor: grabbing;
+}
+.float-bar strong {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+.float-close {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: transparent;
+  color: #7d8c78;
+}
+.float-close:hover {
+  background: #e3efe5;
+  color: var(--green);
+}
+.float-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+.float-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(
+    135deg,
+    transparent 48%,
+    #c6dcc9 48%,
+    #c6dcc9 60%,
+    transparent 60%,
+    transparent 72%,
+    #c6dcc9 72%,
+    #c6dcc9 84%,
+    transparent 84%
+  );
+}
+
+/* --- Notepad --- */
+.notes {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 9px;
+}
+.note-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.note-tabs button {
+  font-size: 10px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #f2f7f2;
+  color: #5c6e58;
+  max-width: 108px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-tabs button.active {
+  background: linear-gradient(140deg, #d9f2df, #cbecd8);
+  color: #1f5c39;
+  font-weight: 600;
+}
+.note-add {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #7d8c78;
+}
+.note-area {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  border: 1px solid #e4eee5;
+  border-radius: 8px;
+  background: #f8fbf8;
+  padding: 11px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.note-area:focus {
+  background: #fff;
+}
+.note-foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #7d8c78;
+}
+
+/* --- Focus timer --- */
+.focus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+}
+.focus-presets {
+  display: flex;
+  gap: 4px;
+  align-self: stretch;
+}
+.focus-presets button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  background: #f2f7f2;
+  color: #5c6e58;
+}
+.focus-presets button.active {
+  background: linear-gradient(140deg, #d9f2df, #cbecd8);
+  color: #1f5c39;
+  font-weight: 600;
+}
+.focus-dial {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  background:
+    conic-gradient(
+      from 0deg,
+      var(--green-bright) 0%,
+      var(--green-glow) var(--progress),
+      transparent 0
+    ),
+    conic-gradient(#e6f0e7, #e6f0e7);
+  transition: background 0.4s linear;
+}
+.focus-dial.resting {
+  background:
+    conic-gradient(
+      from 0deg,
+      var(--accent-amber) 0%,
+      #ffd08a var(--progress),
+      transparent 0
+    ),
+    conic-gradient(#f6eddc, #f6eddc);
+}
+.focus-dial > div {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.focus-dial strong {
+  font-family: "Manrope", sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -1.4px;
+  color: #1b4a30;
+  font-variant-numeric: tabular-nums;
+}
+.focus-dial span {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #7d8c78;
+  margin-top: 2px;
+}
+.focus-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* --- Sound --- */
+.sound {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sound-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sound-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: 7px;
+  background: transparent;
+  color: #4d6354;
+  font-size: 11px;
+  text-align: left;
+}
+.sound-list button:hover {
+  background: #f1f7f2;
+}
+.sound-list button.active {
+  background: linear-gradient(140deg, #d9f2df, #cbecd8);
+  color: #1f5c39;
+}
+.sound-list small {
+  display: block;
+  font-size: 9px;
+  color: #7d8c78;
+  margin-top: 2px;
+}
+.sound-list span {
+  flex: 1;
+  min-width: 0;
+}
+.sound-list svg:last-child {
+  color: #a3b09d;
+}
+.sound-volume {
+  gap: 5px;
+}
+.sound-volume input {
+  width: 100%;
+  padding: 0;
+  accent-color: var(--green-bright);
+}
+
+/* --- Shared library --- */
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sort-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #eff5f0;
+}
+.sort-tabs button {
+  font-size: 10px;
+  padding: 6px 11px;
+  border-radius: 6px;
+  background: transparent;
+  color: #5c6e58;
+}
+.sort-tabs button.active {
+  background: #fff;
+  color: #1f5c39;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(31, 84, 55, 0.1);
+}
+.filter-tabs button small {
+  margin-left: 5px;
+  font-size: 9px;
+  opacity: 0.65;
+}
+.deck-card.shared .deck-art {
+  display: grid;
+  place-items: center;
+}
+.shared-author {
+  font-style: italic;
+}
+.shared-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2ec;
+}
+.shared-actions .button {
+  margin-left: auto;
+}
+.vote {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #f2f7f2;
+  border: 1px solid #e2ede3;
+  color: #5c7059;
+  line-height: 1;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    transform 0.12s ease;
+}
+.vote:hover:not(:disabled) {
+  background: #e6f4e9;
+  color: var(--green);
+  transform: translateY(-1px);
+}
+.vote b {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.vote.voted {
+  background: linear-gradient(140deg, #d9f2df, #c6ebd2);
+  border-color: var(--green-bright);
+  color: #1f5c39;
+}
+.detail-vote {
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+/* --- Plans --- */
+.upgrade-reason {
+  font-size: 12px;
+  color: #5f6b55;
+  background: linear-gradient(135deg, #f3ecff, #eaf3ff);
+  border: 1px solid #e0d6f5;
+  border-radius: 8px;
+  padding: 11px 13px;
+  margin: 0 0 18px;
+}
+.plan-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.plan-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 18px 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e1e9dd;
+  background: #fff;
+  text-align: center;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+.plan-option:hover {
+  transform: translateY(-2px);
+  border-color: #bfdfc6;
+}
+.plan-option.featured {
+  border-color: #cfe3d4;
+  background: linear-gradient(160deg, #f6fbf6, #eef8f0);
+}
+.plan-option.selected {
+  border-color: var(--green-bright);
+  box-shadow: 0 0 0 3px rgba(63, 162, 104, 0.15);
+}
+.plan-flag {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--grad-primary);
+  color: #fff;
+  white-space: nowrap;
+}
+.plan-option strong {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6b55;
+}
+.plan-option b {
+  font-family: "Manrope", sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -1.4px;
+  color: #1b4a30;
+}
+.plan-option small {
+  font-size: 9px;
+  color: #7d8c78;
+}
+.plan-total {
+  font-size: 9px;
+  color: #7d8c78;
+  margin-top: 7px;
+  line-height: 1.5;
+}
+.plan-save {
+  margin-top: 7px;
+  font-size: 9px;
+  font-weight: 600;
+  font-style: normal;
+  color: #1f5c39;
+  background: #ddf2e2;
+  border-radius: 20px;
+  padding: 3px 8px;
+}
+.plan-includes {
+  list-style: none;
+  margin: 20px 0 4px;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+.plan-includes li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  color: #5f6b55;
+}
+.plan-includes svg {
+  color: var(--green-bright);
+}
+.sidebar-upgrade {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 11px 15px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12px;
+  color: #1f5c39;
+  background: linear-gradient(135deg, #e5f6e8, #e9eeff);
+  border: 1px solid #d5e9d9;
+}
+.sidebar-upgrade:hover {
+  box-shadow: var(--shadow-soft);
+}
+.sidebar-upgrade small {
+  display: block;
+  font-size: 9px;
+  color: #5f7a63;
+  margin-top: 3px;
+  font-weight: 400;
+}
+.sidebar-upgrade svg {
+  color: var(--accent-amber);
+}
+
+@media (max-width: 1000px) {
+  .library-toolbar .toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+@media (max-width: 760px) {
+  /* The panels assume a pointer and room to place a window; on a phone
+     the dock alone would open something unusable, so both step aside. */
+  .dock,
+  .float {
+    display: none;
+  }
+  .plan-row {
+    grid-template-columns: 1fr;
+  }
+  .toolbar-right {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .search-field input {
+    width: 100%;
+  }
+}

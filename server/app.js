@@ -16,6 +16,8 @@ import {
   signedHeaders,
 } from "./security.js";
 import { createMailer } from "./mail.js";
+import { entitlements, isPro, plans, publicPlans } from "./plans.js";
+import { seedSharedDecks } from "./seed.js";
 
 const text = (max) => z.string().trim().min(1).max(max);
 const passwordSchema = z
@@ -40,12 +42,20 @@ const deckSchema = z.object({
   color: z.enum(["sage", "peach", "lilac", "blue", "yellow"]).default("sage"),
   cards: z.array(cardSchema).min(1).max(500),
 });
+const noteSchema = z.object({
+  title: z.string().trim().max(60).default("Untitled"),
+  body: z.string().max(20000).default(""),
+});
+const shareSchema = z.object({ deckId: z.uuid() });
+const workspaceSchema = z.object({
+  state: z.record(z.string(), z.unknown()),
+});
 const generationSchema = z.object({
   topic: text(150),
   level: z.enum(["beginner", "intermediate", "advanced"]),
   objective: text(250),
   description: text(12000),
-  count: z.number().int().min(1).max(20),
+  count: z.number().int().min(1).max(100),
   mode: z.enum(["flashcards", "quiz"]),
   requestId: z.uuid(),
 });
@@ -192,6 +202,36 @@ export function createApp({
         .all(id),
     };
   };
+  seedSharedDecks(db);
+  const subFor = (userId) =>
+    db.prepare("SELECT * FROM subscriptions WHERE user_id=?").get(userId) ||
+    null;
+  const planState = (userId) => {
+    const subscription = subFor(userId);
+    const pro = isPro(subscription);
+    const limits = entitlements(subscription);
+    const used = db
+      .prepare(
+        "SELECT count(*) AS n FROM generations_local WHERE user_id=? AND created>?",
+      )
+      .get(userId, Date.now() - 30 * 86400000)?.n;
+    return {
+      pro,
+      plan: subscription?.plan || "free",
+      status: subscription?.status || "active",
+      renews: subscription?.renews || null,
+      limits: {
+        ...limits,
+        decks: limits.decks === Infinity ? null : limits.decks,
+        generationsPerMonth:
+          limits.generationsPerMonth === Infinity
+            ? null
+            : limits.generationsPerMonth,
+        tracks: limits.tracks === Infinity ? null : limits.tracks,
+      },
+      generationsUsed: used || 0,
+    };
+  };
   app.get("/api/health", (_req, res) => {
     db.prepare("SELECT 1").get();
     res.json({ status: "ok" });
@@ -205,7 +245,10 @@ export function createApp({
     ),
   );
   app.get("/api/me", (req, res) =>
-    res.json({ user: req.user ? publicUser(req.user) : null }),
+    res.json({
+      user: req.user ? publicUser(req.user) : null,
+      plan: req.user ? planState(req.user.id) : null,
+    }),
   );
   app.post("/api/auth/signup", authLimit, async (req, res) => {
     const data = profileSchema
@@ -374,6 +417,15 @@ export function createApp({
   );
   app.post("/api/decks", auth, (req, res) => {
     const data = deckSchema.parse(req.body);
+    const limits = entitlements(subFor(req.user.id));
+    const owned = db
+      .prepare("SELECT count(*) AS n FROM decks WHERE user_id=?")
+      .get(req.user.id).n;
+    if (owned >= limits.decks)
+      throw fail(
+        402,
+        `The free plan holds ${limits.decks} decks. Upgrade for unlimited decks.`,
+      );
     const id = insertDeck(req.user.id, data);
     res.status(201).json(deckFor(req.user.id, id));
   });
@@ -557,9 +609,29 @@ export function createApp({
   app.post("/api/generate", auth, async (req, res) => {
     if (!req.user.verified)
       throw fail(403, "Verify your email in Settings to unlock generation.");
-    res.json(
-      await cloud(req.user, "/v1/generate", generationSchema.parse(req.body)),
-    );
+    const input = generationSchema.parse(req.body);
+    const limits = entitlements(subFor(req.user.id));
+    if (input.count > limits.maxCardsPerGeneration)
+      throw fail(
+        402,
+        `The free plan generates up to ${limits.maxCardsPerGeneration} cards at a time. Memify Pro goes to 100.`,
+      );
+    const used = db
+      .prepare(
+        "SELECT count(*) AS n FROM generations_local WHERE user_id=? AND created>?",
+      )
+      .get(req.user.id, Date.now() - 30 * 86400000).n;
+    if (used >= limits.generationsPerMonth)
+      throw fail(
+        402,
+        "You have used this month's free generations. Upgrade for unlimited AI sets.",
+      );
+    const result = await cloud(req.user, "/v1/generate", input);
+    // Record only on success so a failed generation never burns quota.
+    db.prepare(
+      "INSERT OR IGNORE INTO generations_local (id,user_id,cards,created) VALUES (?,?,?,?)",
+    ).run(input.requestId, req.user.id, input.count, Date.now());
+    res.json(result);
   });
   app.post("/api/checkout", auth, async (req, res) => {
     if (!req.user.verified)
@@ -569,6 +641,317 @@ export function createApp({
       .parse(req.body);
     res.json(await cloud(req.user, "/v1/checkout", data));
   });
+  // ---- Shared deck library -------------------------------------------
+  const sharedRow = (row, votedIds) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    color: row.color,
+    author: row.author,
+    cardCount: row.card_count,
+    votes: row.votes,
+    saves: row.saves,
+    created: row.created,
+    mine: Boolean(row.user_id && row.user_id === row.viewer_id),
+    voted: votedIds.has(row.id),
+  });
+  app.get("/api/shared", (req, res) => {
+    const query = z
+      .object({
+        category: z.string().trim().max(50).optional(),
+        sort: z.enum(["top", "new", "trending"]).default("top"),
+        search: z.string().trim().max(80).optional(),
+      })
+      .parse(req.query);
+    const where = [];
+    const params = [];
+    if (query.category && query.category !== "All") {
+      where.push("category=?");
+      params.push(query.category);
+    }
+    if (query.search) {
+      where.push("(title LIKE ? OR description LIKE ?)");
+      params.push(`%${query.search}%`, `%${query.search}%`);
+    }
+    // Trending balances votes against age so a strong new deck can still
+    // surface above an older one that has simply accumulated votes.
+    const order =
+      query.sort === "new"
+        ? "created DESC"
+        : query.sort === "trending"
+          ? "(CAST(votes AS REAL) / (((? - created) / 3600000.0) + 2)) DESC"
+          : "votes DESC, created DESC";
+    const orderParams = query.sort === "trending" ? [Date.now()] : [];
+    const rows = db
+      .prepare(
+        `SELECT * FROM shared_decks ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY ${order} LIMIT 60`,
+      )
+      .all(...params, ...orderParams);
+    const voted = new Set(
+      req.user
+        ? db
+            .prepare("SELECT shared_id FROM shared_votes WHERE user_id=?")
+            .all(req.user.id)
+            .map((v) => v.shared_id)
+        : [],
+    );
+    res.json({
+      categories: db
+        .prepare(
+          "SELECT category, count(*) AS n FROM shared_decks GROUP BY category ORDER BY n DESC",
+        )
+        .all(),
+      decks: rows.map((r) =>
+        sharedRow({ ...r, viewer_id: req.user?.id }, voted),
+      ),
+    });
+  });
+  app.get("/api/shared/:id", (req, res) => {
+    const row = db
+      .prepare("SELECT * FROM shared_decks WHERE id=?")
+      .get(req.params.id);
+    if (!row) throw fail(404, "This collection is no longer available.");
+    const voted = new Set(
+      req.user
+        ? db
+            .prepare(
+              "SELECT shared_id FROM shared_votes WHERE user_id=? AND shared_id=?",
+            )
+            .all(req.user.id, row.id)
+            .map((v) => v.shared_id)
+        : [],
+    );
+    res.json({
+      ...sharedRow({ ...row, viewer_id: req.user?.id }, voted),
+      cards: JSON.parse(row.cards),
+    });
+  });
+  app.post("/api/shared/:id/vote", auth, (req, res) => {
+    const row = db
+      .prepare("SELECT * FROM shared_decks WHERE id=?")
+      .get(req.params.id);
+    if (!row) throw fail(404, "This collection is no longer available.");
+    const votes = db.transaction(() => {
+      const existing = db
+        .prepare("SELECT 1 FROM shared_votes WHERE shared_id=? AND user_id=?")
+        .get(row.id, req.user.id);
+      if (existing) {
+        db.prepare(
+          "DELETE FROM shared_votes WHERE shared_id=? AND user_id=?",
+        ).run(row.id, req.user.id);
+        db.prepare(
+          "UPDATE shared_decks SET votes=MAX(0,votes-1) WHERE id=?",
+        ).run(row.id);
+        return false;
+      }
+      db.prepare("INSERT INTO shared_votes VALUES (?,?,?)").run(
+        row.id,
+        req.user.id,
+        Date.now(),
+      );
+      db.prepare("UPDATE shared_decks SET votes=votes+1 WHERE id=?").run(
+        row.id,
+      );
+      return true;
+    })();
+    const fresh = db
+      .prepare("SELECT votes FROM shared_decks WHERE id=?")
+      .get(row.id);
+    res.json({ voted: votes, votes: fresh.votes });
+  });
+  app.post("/api/shared", auth, (req, res) => {
+    const limits = entitlements(subFor(req.user.id));
+    if (!limits.publish)
+      throw fail(
+        402,
+        "Publishing to the library is part of Memify Pro. Upgrade to share your decks.",
+      );
+    const { deckId } = shareSchema.parse(req.body);
+    const deck = deckFor(req.user.id, deckId);
+    const existing = db
+      .prepare("SELECT id FROM shared_decks WHERE deck_id=? AND user_id=?")
+      .get(deck.id, req.user.id);
+    if (existing) throw fail(409, "This deck is already in the library.");
+    const id = randomUUID();
+    db.prepare(
+      "INSERT INTO shared_decks (id,deck_id,user_id,author,title,description,category,color,cards,card_count,votes,saves,seeded,created) VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0,?)",
+    ).run(
+      id,
+      deck.id,
+      req.user.id,
+      req.user.name,
+      deck.title,
+      deck.description,
+      deck.category,
+      deck.color,
+      JSON.stringify(deck.cards.map((c) => ({ front: c.front, back: c.back }))),
+      deck.cards.length,
+      Date.now(),
+    );
+    res.status(201).json({ id });
+  });
+  app.delete("/api/shared/:id", auth, (req, res) => {
+    const row = db
+      .prepare("SELECT * FROM shared_decks WHERE id=? AND user_id=?")
+      .get(req.params.id, req.user.id);
+    if (!row) throw fail(404, "Collection not found.");
+    db.prepare("DELETE FROM shared_decks WHERE id=?").run(row.id);
+    res.json({ ok: true });
+  });
+  app.post("/api/shared/:id/save", auth, (req, res) => {
+    const row = db
+      .prepare("SELECT * FROM shared_decks WHERE id=?")
+      .get(req.params.id);
+    if (!row) throw fail(404, "This collection is no longer available.");
+    const limits = entitlements(subFor(req.user.id));
+    const owned = db
+      .prepare("SELECT count(*) AS n FROM decks WHERE user_id=?")
+      .get(req.user.id).n;
+    if (owned >= limits.decks)
+      throw fail(
+        402,
+        `The free plan holds ${limits.decks} decks. Upgrade to keep adding.`,
+      );
+    const existing = db
+      .prepare("SELECT id FROM decks WHERE user_id=? AND source=?")
+      .get(req.user.id, `shared:${row.id}`);
+    const id =
+      existing?.id ||
+      insertDeck(
+        req.user.id,
+        {
+          title: row.title,
+          description: row.description,
+          category: row.category,
+          color: row.color,
+          cards: JSON.parse(row.cards),
+        },
+        `shared:${row.id}`,
+      );
+    if (!existing)
+      db.prepare("UPDATE shared_decks SET saves=saves+1 WHERE id=?").run(
+        row.id,
+      );
+    res.json(deckFor(req.user.id, id));
+  });
+
+  // ---- Notepad ---------------------------------------------------------
+  app.get("/api/notes", auth, (req, res) =>
+    res.json(
+      db
+        .prepare("SELECT * FROM notes WHERE user_id=? ORDER BY position, rowid")
+        .all(req.user.id),
+    ),
+  );
+  app.post("/api/notes", auth, (req, res) => {
+    const limits = entitlements(subFor(req.user.id));
+    const count = db
+      .prepare("SELECT count(*) AS n FROM notes WHERE user_id=?")
+      .get(req.user.id).n;
+    if (count >= limits.noteTabs)
+      throw fail(
+        402,
+        limits.noteTabs === 1
+          ? "The free plan keeps one note. Upgrade for three tabs."
+          : `Notes are limited to ${limits.noteTabs} tabs.`,
+      );
+    const data = noteSchema.parse(req.body);
+    const id = randomUUID();
+    db.prepare(
+      "INSERT INTO notes (id,user_id,title,body,position,updated) VALUES (?,?,?,?,?,?)",
+    ).run(id, req.user.id, data.title, data.body, count, Date.now());
+    res.status(201).json(db.prepare("SELECT * FROM notes WHERE id=?").get(id));
+  });
+  app.put("/api/notes/:id", auth, (req, res) => {
+    const data = noteSchema.parse(req.body);
+    const result = db
+      .prepare(
+        "UPDATE notes SET title=?,body=?,updated=? WHERE id=? AND user_id=?",
+      )
+      .run(data.title, data.body, Date.now(), req.params.id, req.user.id);
+    if (!result.changes) throw fail(404, "Note not found.");
+    res.json(db.prepare("SELECT * FROM notes WHERE id=?").get(req.params.id));
+  });
+  app.delete("/api/notes/:id", auth, (req, res) => {
+    const result = db
+      .prepare("DELETE FROM notes WHERE id=? AND user_id=?")
+      .run(req.params.id, req.user.id);
+    if (!result.changes) throw fail(404, "Note not found.");
+    res.json({ ok: true });
+  });
+
+  // ---- Workspace layout + focus sessions -------------------------------
+  app.get("/api/workspace", auth, (req, res) => {
+    const row = db
+      .prepare("SELECT state FROM workspace WHERE user_id=?")
+      .get(req.user.id);
+    res.json(row ? JSON.parse(row.state) : {});
+  });
+  app.put("/api/workspace", auth, (req, res) => {
+    const { state } = workspaceSchema.parse(req.body);
+    const json = JSON.stringify(state);
+    if (json.length > 8000) throw fail(413, "Workspace layout is too large.");
+    db.prepare(
+      "INSERT INTO workspace (user_id,state,updated) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET state=excluded.state, updated=excluded.updated",
+    ).run(req.user.id, json, Date.now());
+    res.json({ ok: true });
+  });
+  app.post("/api/focus", auth, (req, res) => {
+    const data = z
+      .object({
+        minutes: z.number().int().min(1).max(240),
+        kind: z.enum(["focus", "break"]).default("focus"),
+      })
+      .parse(req.body);
+    db.prepare("INSERT INTO focus_sessions VALUES (?,?,?,?,?)").run(
+      randomUUID(),
+      req.user.id,
+      data.minutes,
+      data.kind,
+      Date.now(),
+    );
+    res.json({ ok: true });
+  });
+  app.get("/api/focus", auth, (req, res) =>
+    res.json(
+      db
+        .prepare(
+          "SELECT minutes,kind,created FROM focus_sessions WHERE user_id=? AND created>? ORDER BY created",
+        )
+        .all(req.user.id, Date.now() - 90 * 86400000),
+    ),
+  );
+
+  // ---- Subscription ----------------------------------------------------
+  app.get("/api/plan", auth, (req, res) =>
+    res.json({ ...planState(req.user.id), plans: publicPlans() }),
+  );
+  app.post("/api/subscribe", auth, async (req, res) => {
+    const data = z
+      .object({
+        plan: z.enum(["monthly", "halfYear", "yearly"]),
+        requestId: z.uuid(),
+      })
+      .parse(req.body);
+    if (!req.user.verified)
+      throw fail(403, "Verify your email before subscribing.");
+    if (!config.cloudUrl)
+      throw fail(
+        503,
+        "Subscriptions are not connected on this installation. Memify stays fully usable without them.",
+      );
+    const chosen = plans[data.plan];
+    res.json(
+      await cloud(req.user, "/v1/subscribe", {
+        plan: chosen.id,
+        rupees: chosen.rupees,
+        months: chosen.months,
+        requestId: data.requestId,
+      }),
+    );
+  });
+
   app.use("/api", (_req, res) =>
     res.status(404).json({ error: "Endpoint not found." }),
   );

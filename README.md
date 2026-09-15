@@ -12,7 +12,10 @@ Memify is a calm, self-hostable learning workspace built with React, TypeScript,
 - Private decks, editable question/answer cards, reverse-card and fill-in-the-blank helpers, JSON deck import/export, full account export and deletion.
 - Due-card reviews with a transparent SM-2-inspired scheduler, keyboard controls, and typed-recall quizzes.
 - Original starter collections, searchable library, daily goals, activity history, and progress.
-- Optional cloud integration: AI-generated sets, preview/edit before saving, credit balance, and Stripe Checkout.
+- A shared deck library: publish your own collections, one-vote-per-account upvoting, category filters and top/new/trending ranking, seeded with starter content.
+- Study tools that float over any page — a resizable notepad with autosaving tabs, a Pomodoro timer, and synthesised focus sound — with their layout remembered per account.
+- Memify Pro (₹299/month, ₹1,200/6 months, ₹2,000/year) lifts the free ceilings: unlimited AI sets of up to 100 cards, unlimited decks, three note tabs, publishing, and every timer preset and sound.
+- Optional cloud integration: AI-generated sets, preview/edit before saving, and Stripe Checkout.
 - Responsive layouts, native keyboard-trapped dialogs, reduced-motion support, self-hosted fonts, and no analytics or tracking scripts.
 
 ## Start locally
@@ -49,7 +52,7 @@ Browser tests use an isolated in-memory database and the production build; run `
 
 See [deployment](docs/DEPLOYMENT.md), [architecture](docs/ARCHITECTURE.md), and [release checklist](docs/RELEASE.md). This code is a v1 implementation, not a claim that an unconfigured deployment is ready to accept real users or payments. Live SMTP, provider generation, Stripe test/live webhooks, backup restoration, and operational configuration must be validated in the target environment.
 
-Scope: text question/answer cards and self-assessed recall quizzes. Anki `.apkg` import, media cards, native mobile apps, offline sync, public user-generated deck publishing, and automatic answer grading are not included in this release.
+Scope: text question/answer cards and self-assessed recall quizzes. Anki `.apkg` import, media cards, native mobile apps, offline sync, and automatic answer grading are not included in this release. The floating study tools assume a pointer and are hidden below 760px. Subscription checkout requires the optional cloud service; without it the plan UI explains that billing is not connected rather than simulating a purchase.
 
 ## Contribute
 
