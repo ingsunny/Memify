@@ -22,6 +22,20 @@ export function Generate() {
   const monthlyLimit = plan?.limits.generationsPerMonth ?? 3;
   const maxCards = plan?.limits.maxCardsPerGeneration ?? 20;
   const remaining = Math.max(0, monthlyLimit - (plan?.generationsUsed ?? 0));
+  // Offered sizes follow the plan's ceiling, so Pro sees the larger sets
+  // it pays for instead of the free tier's list.
+  const countOptions = (pro ? [10, 30, 50, 70, 100] : [5, 10, 15, 20]).filter(
+    (n) => n <= maxCards,
+  );
+  useEffect(() => {
+    // A count chosen on Pro would be rejected after the plan lapses, so
+    // fall back to the largest size the current plan allows.
+    if (countOptions.length && !countOptions.includes(form.count))
+      update(
+        "count",
+        countOptions.reduce((best, n) => (n <= maxCards ? n : best)),
+      );
+  }, [maxCards]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<
@@ -150,7 +164,7 @@ export function Generate() {
                   value={form.count}
                   onChange={(e) => update("count", Number(e.target.value))}
                 >
-                  {[5, 10, 15, 20].map((n) => (
+                  {countOptions.map((n) => (
                     <option value={n} key={n}>
                       {n} cards
                     </option>
