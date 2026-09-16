@@ -1,4 +1,5 @@
 import { Suspense, lazy, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Layers,
   Brain,
@@ -122,7 +123,7 @@ export function DeckAppearance({
 
   const showImage = mode === "image";
   return (
-    <section className={`appearance ${browsing ? "browsing" : ""}`}>
+    <section className="appearance">
       <div
         className={`appearance-preview ${color}`}
         style={
@@ -266,21 +267,28 @@ export function DeckAppearance({
           </button>
         </fieldset>
       </div>
-      {browsing && (
-        <Suspense
-          fallback={
-            <div className="icon-browser loading-state">
-              <span className="spinner" />
-            </div>
-          }
-        >
-          <IconBrowser
-            selected={icon}
-            onSelect={(name) => onIcon(name)}
-            close={() => setBrowsing(false)}
-          />
-        </Suspense>
-      )}
+      {browsing &&
+        // Rendered outside the dialog so it floats in the space beside
+        // it rather than crowding the form.
+        createPortal(
+          <Suspense
+            fallback={
+              <div className="icon-browser floating is-loading">
+                <span className="spinner" />
+              </div>
+            }
+          >
+            <IconBrowser
+              floating
+              selected={icon}
+              onSelect={(name) => onIcon(name)}
+              close={() => setBrowsing(false)}
+            />
+          </Suspense>,
+          // The dialog's own dock keeps the panel in the top layer with
+          // it; body would place it behind the backdrop.
+          document.getElementById("modal-dock") || document.body,
+        )}
     </section>
   );
 }

@@ -32,10 +32,13 @@ export function IconBrowser({
   selected,
   onSelect,
   close,
+  floating = false,
 }: {
   selected: string;
   onSelect: (name: string) => void;
   close: () => void;
+  /** Rendered outside the dialog, docked beside it. */
+  floating?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(120);
@@ -57,8 +60,22 @@ export function IconBrowser({
   useEffect(() => setLimit(120), [query]);
 
   return (
-    <aside className="icon-browser" aria-label="Choose an icon">
+    <aside
+      className={`icon-browser ${floating ? "floating" : ""}`}
+      aria-label="Choose an icon"
+    >
       <header>
+        <strong className="browser-title">Choose an icon</strong>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Close icon browser"
+          onClick={close}
+        >
+          <X size={16} />
+        </button>
+      </header>
+      <div className="browser-search">
         <div className="search-field">
           <Search size={15} />
           <input
@@ -69,15 +86,7 @@ export function IconBrowser({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Close icon browser"
-          onClick={close}
-        >
-          <X size={16} />
-        </button>
-      </header>
+      </div>
       <div className="icon-grid">
         {matches.slice(0, limit).map(({ name }) => {
           const Icon = getIcon(name);

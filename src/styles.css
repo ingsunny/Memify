@@ -1315,6 +1315,18 @@ legend {
 .modal.wide {
   width: min(760px, calc(100% - 28px));
 }
+/* Give the docked panel room on mid-size screens by trimming the dialog
+   rather than dropping to a sheet that covers the controls. The panel
+   anchors off --dialog-half, so both stay in step. */
+.modal.wide {
+  --dialog-half: 380px;
+}
+@media (min-width: 1361px) and (max-width: 1560px) {
+  .modal.wide:has(#modal-dock > *) {
+    --dialog-half: 330px;
+    width: min(660px, calc(100% - 28px));
+  }
+}
 .modal::backdrop {
   background: #26322566;
   backdrop-filter: blur(4px);
@@ -5019,9 +5031,6 @@ summary:focus-visible,
 }
 
 /* --- Icon browser: a panel beside the controls on desktop --- */
-.appearance.browsing {
-  grid-template-columns: 200px minmax(0, 1fr) 268px;
-}
 .icon-more {
   display: inline-flex;
   align-items: center;
@@ -5097,24 +5106,79 @@ summary:focus-visible,
   text-align: center;
 }
 
-@media (max-width: 900px) {
-  /* No room for a third column: the browser becomes a sheet under the
-     controls, still inside the modal's scroll region. */
-  .appearance.browsing {
-    grid-template-columns: 200px minmax(0, 1fr);
+/* Floating panel: sits beside the dialog rather than inside it, so the
+   form never has to make room for it. */
+.icon-browser.floating {
+  position: fixed;
+  z-index: 1;
+  top: 50%;
+  /* position: fixed resolves against the viewport, not the dialog, so
+     the panel is anchored from the centre: half the 760px dialog plus a
+     gap puts it just past the form's right edge. Its width is whatever
+     gutter remains, capped for readability. */
+  left: calc(50% + var(--dialog-half, 380px) + 12px);
+  width: clamp(
+    212px,
+    calc(50vw / 1.25 - var(--dialog-half, 380px) - 20px),
+    256px
+  );
+  transform: translateY(-50%);
+  max-height: min(60dvh, 420px);
+  background: #fff;
+  border-color: #dfeade;
+  box-shadow: 0 22px 60px rgba(31, 84, 55, 0.2);
+  animation: browser-in 0.16s ease-out;
+}
+.icon-browser.floating.is-loading {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+}
+.browser-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e3329;
+}
+.icon-browser header {
+  justify-content: space-between;
+}
+.browser-search .search-field {
+  width: 100%;
+}
+.browser-search .search-field input {
+  width: 100%;
+  font-size: 11px;
+}
+@keyframes browser-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-10px);
   }
-  .icon-browser {
-    grid-column: 1 / -1;
-    max-height: 260px;
+}
+
+/* Not enough room to dock beside the dialog: become a bottom sheet. */
+@media (max-width: 1360px) {
+  .icon-browser.floating {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    transform: none;
+    z-index: 2;
+    max-height: 46dvh;
+    border-radius: 14px 14px 0 0;
+    border-bottom: 0;
+    animation: sheet-in 0.18s ease-out;
+  }
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
   }
 }
 @media (max-width: 620px) {
-  .appearance.browsing {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .icon-browser {
-    max-height: 210px;
-  }
   .icon-grid {
     grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
   }

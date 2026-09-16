@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   X,
   Brain,
@@ -28,8 +28,20 @@ export function Modal({
   scroll?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [docked, setDocked] = useState(false);
   const closeRef = useRef(close);
   closeRef.current = close;
+  // Track whether the dock holds anything so the dialog can make room.
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+    const observer = new MutationObserver(() =>
+      setDocked(dock.childElementCount > 0),
+    );
+    observer.observe(dock, { childList: true });
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     const el = ref.current!;
     const previous = document.activeElement as HTMLElement;
@@ -48,7 +60,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={`modal ${wide ? "wide" : ""}`}
+      className={`modal ${wide ? "wide" : ""} ${docked ? "has-dock" : ""}`}
       aria-labelledby="dialog-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) close();
@@ -65,6 +77,9 @@ export function Modal({
         </button>
       </div>
       {scroll ? <div className="modal-scroll">{children}</div> : children}
+      {/* Anything docked beside the dialog renders here, so it shares the
+          dialog's top layer instead of sitting under its backdrop. */}
+      <div id="modal-dock" ref={dockRef} />
     </dialog>
   );
 }
