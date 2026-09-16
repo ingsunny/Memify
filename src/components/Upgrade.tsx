@@ -27,13 +27,19 @@ export function Upgrade() {
   const subscribe = async () => {
     setBusy(true);
     try {
-      const result = await send<{ url?: string }>("/subscribe", {
-        plan: chosen,
-        requestId: crypto.randomUUID(),
-      });
+      const result = await send<{ url?: string; stub?: boolean }>(
+        "/subscribe",
+        { plan: chosen, requestId: crypto.randomUUID() },
+      );
+      // A URL means a real checkout; without one the plan is already
+      // active and the app only needs to reload its state.
       if (result.url) return void (window.location.href = result.url);
       await refresh();
-      notify("You're on Memify Pro.");
+      notify(
+        result.stub
+          ? "Memify Pro is active. (Billing is not connected yet.)"
+          : "You're on Memify Pro.",
+      );
       closeUpgrade();
     } catch (e) {
       notify((e as Error).message);
@@ -85,7 +91,7 @@ export function Upgrade() {
           disabled={busy || !plans.length}
         >
           <Sparkles size={15} />
-          {busy ? "Opening checkout…" : "Continue"}
+          {busy ? "Activating…" : "Continue"}
         </button>
       </div>
     </Modal>

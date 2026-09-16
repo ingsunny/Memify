@@ -942,14 +942,26 @@ export function createApp({
         "Subscriptions are not connected on this installation. Memify stays fully usable without them.",
       );
     const chosen = plans[data.plan];
-    res.json(
-      await cloud(req.user, "/v1/subscribe", {
-        plan: chosen.id,
-        rupees: chosen.rupees,
-        months: chosen.months,
-        requestId: data.requestId,
-      }),
-    );
+    const result = await cloud(req.user, "/v1/subscribe", {
+      plan: chosen.id,
+      rupees: chosen.rupees,
+      months: chosen.months,
+      requestId: data.requestId,
+    });
+    // A checkout URL means payment is pending; the plan is recorded only
+    // once the service confirms it is active.
+    if (result.activated)
+      db.prepare(
+        "INSERT INTO subscriptions (user_id,plan,status,renews,reference,updated) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET plan=excluded.plan, status=excluded.status, renews=excluded.renews, reference=excluded.reference, updated=excluded.updated",
+      ).run(
+        req.user.id,
+        chosen.id,
+        "active",
+        result.renews || Date.now() + chosen.months * 30 * 86400000,
+        result.stub ? "stub" : "cloud",
+        Date.now(),
+      );
+    res.json({ ...result, plan: planState(req.user.id) });
   });
 
   app.use("/api", (_req, res) =>
