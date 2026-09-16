@@ -1,5 +1,6 @@
 import { Suspense, lazy, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DynamicIcon } from "./DynamicIcon";
 import {
   Layers,
   Brain,
@@ -104,7 +105,9 @@ export function DeckAppearance({
   const [mode, setMode] = useState<"color" | "image">(
     banner ? "image" : "color",
   );
-  const Chosen = deckIcons[icon as DeckIconName] || Layers;
+  // Quick picks render instantly; a library icon resolves through the
+  // lazy chunk so the preview reflects any of the 1743 choices.
+  const Quick = deckIcons[icon as DeckIconName];
   const swatch =
     accent || palette.find((p) => p.id === color)?.hex || palette[0].hex;
 
@@ -136,7 +139,11 @@ export function DeckAppearance({
       >
         {showImage && banner && <span className="preview-scrim" />}
         <span className="deck-glyph">
-          <Chosen size={30} strokeWidth={1.6} />
+          {Quick ? (
+            <Quick size={30} strokeWidth={1.6} />
+          ) : (
+            <DynamicIcon name={icon} size={30} />
+          )}
         </span>
         <span className="preview-title">{title || "Your deck"}</span>
       </div>
@@ -256,14 +263,30 @@ export function DeckAppearance({
               </button>
             );
           })}
+          {/* A chosen library icon joins the row so the selection is
+              visible without reopening the browser. */}
+          {!Quick && icon && (
+            <button
+              type="button"
+              aria-label={icon}
+              aria-pressed
+              className="selected"
+              onClick={() => setBrowsing(true)}
+            >
+              <DynamicIcon name={icon} size={17} />
+            </button>
+          )}
+          <span className="icon-divider" aria-hidden="true" />
           <button
             type="button"
-            className={`icon-more ${browsing ? "selected" : ""}`}
+            className={`icon-more ${browsing ? "open" : ""}`}
             aria-expanded={browsing}
             onClick={() => setBrowsing((v) => !v)}
           >
-            <Grid3x3 size={14} />
-            More
+            <Grid3x3 size={15} />
+            <span>
+              Browse all<small>1,743</small>
+            </span>
           </button>
         </fieldset>
       </div>

@@ -4754,8 +4754,21 @@ summary:focus-visible,
   gap: 10px;
 }
 @media (max-width: 620px) {
-  .modal {
-    max-height: calc(94dvh / 1.25);
+  /* Full screen on a phone: a dialog floating in a 12px gutter wastes
+     space that the form needs, and the rounded card reads as a toy
+     next to a native sheet. */
+  .modal,
+  .modal.wide {
+    /* A dialog is centred by UA margins; clearing them lets it fill the
+       screen instead of floating in a gutter. */
+    margin: 0;
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    height: calc(100dvh / 1.25);
+    border-radius: 0;
+    border: 0;
   }
   .modal-head {
     padding: 18px 20px 14px;
@@ -4867,7 +4880,7 @@ summary:focus-visible,
 .icon-picker legend {
   width: 100%;
 }
-.icon-picker button {
+.icon-picker button:not(.icon-more) {
   width: 34px;
   height: 34px;
   display: grid;
@@ -4880,11 +4893,11 @@ summary:focus-visible,
     background 0.15s ease,
     color 0.15s ease;
 }
-.icon-picker button:hover {
+.icon-picker button:not(.icon-more):hover {
   background: #e6f2e9;
   color: var(--green);
 }
-.icon-picker button.selected {
+.icon-picker button.selected:not(.icon-more) {
   background: linear-gradient(140deg, #d9f2df, #c6ebd2);
   border-color: var(--green-bright);
   color: #1f5c39;
@@ -5031,24 +5044,57 @@ summary:focus-visible,
 }
 
 /* --- Icon browser: a panel beside the controls on desktop --- */
+/* A separate action, not another icon to pick: a rule divides it from
+   the swatches, and it carries a two-line label and its own fill so it
+   never reads as the seventh tile. */
+.icon-divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 3px;
+  background: #dfe9df;
+  align-self: center;
+}
 .icon-more {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
   height: 34px;
-  padding: 0 11px;
+  padding: 0 12px 0 10px;
   border-radius: 8px;
-  background: #f2f7f2;
-  border: 1px solid #e4eee5;
-  color: #5c6e58;
+  background: linear-gradient(140deg, #eef7f0, #e4f2e8);
+  border: 1px solid #cfe4d5;
+  color: var(--green);
+  text-align: left;
+  /* The row wraps, so the button must keep its own width instead of
+     being squeezed into a column by the swatches beside it. */
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.icon-more > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
   font-size: 10px;
   font-weight: 600;
+  line-height: 1;
 }
-.icon-more:hover,
-.icon-more.selected {
-  background: linear-gradient(140deg, #d9f2df, #c6ebd2);
+.icon-more small {
+  font-size: 9px;
+  font-weight: 400;
+  color: #5f7a63;
+}
+.icon-more:hover {
+  background: linear-gradient(140deg, #e2f3e7, #d5ecdd);
   border-color: var(--green-bright);
-  color: #1f5c39;
+}
+.icon-more.open {
+  background: var(--grad-primary);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(31, 107, 65, 0.26);
+}
+.icon-more.open small {
+  color: rgba(255, 255, 255, 0.8);
 }
 .icon-browser {
   display: flex;
@@ -5079,20 +5125,40 @@ summary:focus-visible,
   overflow-y: auto;
   overscroll-behavior: contain;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 3px;
   align-content: start;
 }
 .icon-grid button {
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 4px 7px;
+  border-radius: 8px;
   background: transparent;
   color: #5c6e58;
   transition:
     background 0.12s ease,
     color 0.12s ease;
+}
+/* The name matters more than density here: an unlabelled grid of 1700
+   line icons is almost impossible to scan. */
+.icon-grid button > span {
+  font-size: 8px;
+  line-height: 1.25;
+  text-align: center;
+  color: #7d8c78;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+.icon-grid button:hover > span,
+.icon-grid button.selected > span {
+  color: inherit;
 }
 .icon-grid button:hover {
   background: #e6f2e9;
@@ -5123,7 +5189,7 @@ summary:focus-visible,
     256px
   );
   transform: translateY(-50%);
-  max-height: min(60dvh, 420px);
+  max-height: min(64dvh, 460px);
   background: #fff;
   border-color: #dfeade;
   box-shadow: 0 22px 60px rgba(31, 84, 55, 0.2);
@@ -5180,6 +5246,6 @@ summary:focus-visible,
 }
 @media (max-width: 620px) {
   .icon-grid {
-    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   }
 }

@@ -88,19 +88,23 @@ export function IconBrowser({
         </div>
       </div>
       <div className="icon-grid">
-        {matches.slice(0, limit).map(({ name }) => {
+        {matches.slice(0, limit).map(({ name, text }) => {
           const Icon = getIcon(name);
           return (
             <button
               type="button"
               key={name}
-              title={words(name)}
-              aria-label={words(name)}
+              title={text}
+              aria-label={text}
               aria-pressed={name === selected}
               className={name === selected ? "selected" : ""}
-              onClick={() => onSelect(name)}
+              onClick={() => {
+                onSelect(name);
+                close();
+              }}
             >
-              <Icon size={18} strokeWidth={1.7} />
+              <Icon size={19} strokeWidth={1.7} />
+              <span>{text}</span>
             </button>
           );
         })}
