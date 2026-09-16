@@ -4664,3 +4664,23 @@ summary:focus-visible,
     text-overflow: ellipsis;
   }
 }
+
+/* Verification and reset outcomes: a clear state badge and the quiet
+   countdown line under the primary action. */
+.mini-mark.success {
+  background: linear-gradient(135deg, #d9f2df, #c2e9d0);
+  color: #1f5c39;
+}
+.mini-mark.warn {
+  background: linear-gradient(135deg, #ffe6da, #ffd6c4);
+  color: #c0523a;
+}
+.account-link .spinner {
+  width: 22px;
+  height: 22px;
+}
+.redirect-note {
+  font-size: 10px;
+  color: #5f6b55;
+  margin: 0;
+}
