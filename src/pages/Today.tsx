@@ -153,7 +153,7 @@ export function Today() {
             </div>
           </section>
           <div className="stats-row">
-            <div className="stat">
+            <div className={`stat ${due ? "" : "stat-empty"}`}>
               <span className="stat-icon sage">
                 <Layers size={19} />
               </span>
@@ -162,10 +162,10 @@ export function Today() {
                   {due}
                   <small>cards</small>
                 </strong>
-                <span>Ready to review</span>
+                <span>{due ? "Due today" : "Nothing due yet"}</span>
               </div>
             </div>
-            <div className="stat">
+            <div className={`stat ${completed ? "" : "stat-empty"}`}>
               <span className="stat-icon peach">
                 <Check size={19} />
               </span>
@@ -174,10 +174,10 @@ export function Today() {
                   {completed}
                   <small>reviews</small>
                 </strong>
-                <span>Completed today</span>
+                <span>{completed ? "Done today" : "None yet today"}</span>
               </div>
             </div>
-            <div className="stat">
+            <div className={`stat ${total ? "" : "stat-empty"}`}>
               <span className="stat-icon lilac">
                 <Sprout size={19} />
               </span>
@@ -186,7 +186,7 @@ export function Today() {
                   {total}
                   <small>ideas</small>
                 </strong>
-                <span>In your collection</span>
+                <span>{total ? "In your decks" : "Add one to begin"}</span>
               </div>
             </div>
           </div>

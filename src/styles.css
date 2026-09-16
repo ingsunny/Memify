@@ -5249,3 +5249,321 @@ summary:focus-visible,
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   }
 }
+
+/* ============================================================
+   DESIGN PASS
+   The layout and palette were sound; confidence was leaking from
+   three places: type too small to feel authoritative, every element
+   competing at the same visual weight, and the primary action buried
+   among decoration. Each block below names what it fixes.
+   ============================================================ */
+
+/* --- 1. Type scale -------------------------------------------------
+   162 of ~250 font-size rules were 11px or smaller, and thirteen were
+   6-7px. Tiny type reads as "unfinished demo" rather than "considered
+   product", and it forced the whole UI to sit at 125% zoom to be
+   usable. Raising the floor lets every size step carry meaning.      */
+:root {
+  --step-xs: 11px; /* was 8-9px: labels, meta */
+  --step-sm: 12px; /* was 10px: secondary copy */
+  --step-md: 13px; /* was 11px: body */
+  --step-lg: 15px; /* was 12-13px: emphasis */
+}
+.eyebrow,
+.deck-copy .eyebrow,
+.learning-note .eyebrow {
+  font-size: var(--step-xs);
+  letter-spacing: 1.2px;
+}
+.deck-meta,
+.stat div > span,
+.section-heading p,
+.page-heading p,
+.field-hint,
+.row-main small,
+.row-category,
+.row-count,
+.row-author,
+.note-foot,
+.sound-list small,
+.habit-panel > p,
+.week-row span,
+.habit-note,
+.aside-footer p,
+.quick-create p,
+.hero-footnote,
+.card-number,
+.collection-label,
+.due-label,
+.generation-history small,
+.plan-total,
+.plan-option small,
+.payment-note,
+.icon-grid button > span {
+  font-size: var(--step-sm);
+}
+.deck-copy p,
+.hero-content p,
+.learning-note p,
+.card-list details p,
+.search-results small,
+.sidebar-note p,
+.sidebar-upgrade small,
+.publish-row small,
+.credits-card p {
+  font-size: var(--step-md);
+  line-height: 1.7;
+}
+nav > a,
+.settings-link,
+.filter-tabs button,
+.sort-tabs button,
+.view-toggle button,
+.mode-switch button,
+.search-filter input,
+.filter-select select,
+.deck-copy h3,
+.row-main strong {
+  font-size: var(--step-md);
+}
+.topbar-breadcrumb,
+.search-trigger,
+.date-chip {
+  font-size: var(--step-sm);
+}
+
+/* --- 2. Contrast ---------------------------------------------------
+   #7d8c78 (3.46:1) and #93988c (2.87:1) both failed WCAG AA on the
+   page background. Every hint and caption used one of them, so the
+   text that explains the product was the hardest text to read.       */
+.field-hint,
+.note-foot,
+.sound-list small,
+.row-category,
+.row-count,
+.row-author,
+.icon-grid button > span,
+.plan-option small,
+.plan-total,
+.browser-title,
+.preview-title,
+.deck-copy p {
+  color: #5f6b55;
+}
+.card-thought,
+.illustration-caption {
+  color: #6b7a63;
+}
+
+/* --- 3. One clear action per screen ---------------------------------
+   The hero CTA, the stat tiles, the habit ring and four sidebar cards
+   all competed at similar weight, so nothing read as "do this next".
+   The primary action now gets real presence and everything decorative
+   steps back.                                                        */
+.hero-content .button.dark,
+.hero-content .button.primary {
+  min-height: 48px;
+  padding: 14px 24px;
+  font-size: var(--step-lg);
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(31, 107, 65, 0.3);
+}
+.hero-content .button.dark:hover:not(:disabled) {
+  box-shadow: 0 10px 28px rgba(31, 107, 65, 0.38);
+}
+.hero-content h2 {
+  letter-spacing: -1.1px;
+}
+/* Decorative asides recede so the eye reaches the action first. */
+.learning-note,
+.quick-create,
+.aside-footer {
+  opacity: 0.94;
+}
+.learning-note:hover,
+.quick-create:hover {
+  opacity: 1;
+}
+
+/* --- 4. Progress you can feel --------------------------------------
+   The daily ring showed 0/10 as an almost-empty circle, which reads as
+   failure before the day has started. A visible track and a warmer
+   empty state make the same number feel like a beginning.            */
+.goal-ring strong {
+  font-size: 38px;
+  letter-spacing: -1.6px;
+}
+.goal-ring small {
+  font-size: 17px;
+  color: #7d8c78;
+}
+.goal-ring p {
+  font-size: var(--step-sm);
+  color: #5f6b55;
+  margin-top: 5px;
+}
+.week-row b {
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+}
+
+/* --- 5. Cards that invite a click ----------------------------------
+   Hover lift was uniform and subtle, so nothing felt clickable until
+   the cursor was already on it. A brighter border and a longer lift
+   make affordance visible from across the page.                      */
+.deck-card,
+.deck-row {
+  transition:
+    transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1),
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+.deck-card:hover {
+  transform: translateY(-4px);
+  border-color: #c9e3d0;
+}
+.deck-row:hover {
+  transform: translateY(-2px);
+  border-color: #c9e3d0;
+}
+.deck-card:active,
+.deck-row:active {
+  transform: translateY(-1px);
+}
+
+/* --- 6. Stat tiles: numbers first -----------------------------------
+   The value and its unit were nearly the same size, so the number the
+   user came for had no more weight than the word beside it.          */
+.stat strong {
+  font-size: 30px;
+  letter-spacing: -1.2px;
+}
+.stat strong small {
+  font-size: var(--step-sm);
+  margin-left: 6px;
+}
+.stat div > span {
+  margin-top: 6px;
+}
+.stat-icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* --- 7. Breathing room ---------------------------------------------
+   Section rhythm was uniform, so the page read as one long list with
+   no natural resting points between ideas.                            */
+.section {
+  margin-top: 42px;
+}
+.section-heading {
+  margin-bottom: 20px;
+}
+.section-heading h2 {
+  font-size: 21px;
+}
+.page-heading {
+  margin-bottom: 34px;
+}
+main {
+  padding-top: 42px;
+}
+
+/* --- 8. Zoom, now that type does the work ---------------------------
+   The 125% root zoom existed to compensate for 10-11px type. With a
+   real scale the zoom can come down, which buys back the horizontal
+   room the larger sizes need — especially on a phone, where 125% plus
+   bigger text overflowed. */
+@media (max-width: 760px) {
+  :root {
+    zoom: 1.08;
+  }
+  .modal,
+  .modal.wide {
+    height: calc(100dvh / 1.08);
+  }
+}
+@media (max-width: 620px) {
+  .modal,
+  .modal.wide {
+    max-height: none;
+  }
+}
+
+/* --- 9. Zero states that don't read as failure ----------------------
+   A fresh account saw 0 / 0 / 0 in full-strength type: the first
+   impression was of an empty product rather than a new one. A zero now
+   recedes and its caption says what the number will become.          */
+.stat-empty .stat-icon {
+  opacity: 0.5;
+}
+/* The zero recedes through weight and the dimmed icon, not through a
+   lighter grey: #8a9785 and #9aa68f both failed contrast at this size,
+   so an encouraging empty state would have been an unreadable one. */
+.stat-empty strong {
+  color: #6b7a63;
+  font-weight: 500;
+}
+.stat-empty strong small {
+  color: #6b7a63;
+}
+
+/* --- 10. Focus visibility -------------------------------------------
+   Keyboard focus used a single outline everywhere, which disappeared
+   against the tinted surfaces. A paired ring reads on any background. */
+:is(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--green-bright);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(63, 162, 104, 0.18);
+  border-radius: 6px;
+}
+
+/* --- 11. Motion honesty ---------------------------------------------
+   Buttons lifted on hover but nothing acknowledged the press, so a tap
+   on a slow connection felt like it had been ignored.                */
+.button:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+.dock button:active,
+.icon-grid button:active,
+.color-swatch:active {
+  transform: scale(0.94);
+}
+
+/* --- 12. Fallout from the larger type -------------------------------
+   Raising the scale pushed a few fixed-width elements into wrapping.
+   These give the text room rather than shrinking it back down.       */
+.sidebar-upgrade {
+  align-items: flex-start;
+  padding: 12px 14px;
+}
+.sidebar-upgrade > span {
+  min-width: 0;
+}
+.sidebar-upgrade strong,
+.sidebar-upgrade > span > :first-child {
+  white-space: nowrap;
+}
+.sidebar-upgrade small {
+  font-size: var(--step-xs);
+  line-height: 1.45;
+}
+.sidebar-upgrade svg {
+  margin-top: 2px;
+}
+/* Stat captions need the full tile width once the number is larger. */
+.stat {
+  gap: 13px;
+  padding: 16px 15px;
+}
+.stat div {
+  min-width: 0;
+  flex: 1;
+}
+.stat div > span {
+  line-height: 1.4;
+}
+.stat strong {
+  white-space: nowrap;
+}

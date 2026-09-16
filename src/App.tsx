@@ -146,9 +146,9 @@ export default function App() {
               {user?.name.charAt(0).toUpperCase() || "m"}
             </span>
             <div>
-              <strong>{user?.name || "Hello, curious mind"}</strong>
+              <strong>{user?.name || "Save your progress"}</strong>
               <small>
-                {user ? "Your personal workspace" : "Make yourself at home"}
+                {user ? "Your personal workspace" : "Free — no card needed"}
               </small>
             </div>
             {!user && (
