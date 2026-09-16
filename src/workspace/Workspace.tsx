@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   NotebookPen,
   Timer,
@@ -18,7 +19,8 @@ import { useFloating, contain, viewport, type Geometry } from "./useFloating";
 import { FocusAudio, tracks, type TrackId } from "./audio";
 
 type PanelId = "notes" | "timer" | "sound";
-type Layout = Partial<Record<PanelId, Geometry & { open?: boolean }>>;
+// Only geometry is stored; open state is intentionally per-session.
+type Layout = Partial<Record<PanelId, Geometry>>;
 
 const defaults: Record<PanelId, Geometry> = {
   notes: { x: 0, y: 0, w: 340, h: 380 },
@@ -401,14 +403,12 @@ export function Workspace() {
       loaded.current = false;
       return;
     }
+    // Only where a panel was last placed is restored, never whether it
+    // was open. A tool window is a deliberate action: it must not
+    // reappear on a refresh or when returning to the app.
     void api<Layout>("/workspace")
       .then((saved) => {
         setLayout(saved || {});
-        setOpen(
-          (Object.keys(saved || {}) as PanelId[]).filter(
-            (k) => saved[k]?.open && defaults[k],
-          ),
-        );
         loaded.current = true;
       })
       .catch(() => {
@@ -425,24 +425,14 @@ export function Workspace() {
   );
 
   const toggle = (id: PanelId) => {
-    setOpen((list) => {
-      const isOpen = list.includes(id);
-      const next = isOpen ? list.filter((p) => p !== id) : [...list, id];
-      setLayout((l) => {
-        const merged = {
-          ...l,
-          [id]: { ...(l[id] || place(id, next.length)), open: !isOpen },
-        };
-        persist(merged);
-        return merged;
-      });
-      return next;
-    });
+    setOpen((list) =>
+      list.includes(id) ? list.filter((p) => p !== id) : [...list, id],
+    );
   };
 
-  const remember = (id: PanelId, g: Geometry, stillOpen: boolean) =>
+  const remember = (id: PanelId, g: Geometry) =>
     setLayout((l) => {
-      const merged = { ...l, [id]: { ...g, open: stillOpen } };
+      const merged = { ...l, [id]: g };
       persist(merged);
       return merged;
     });
@@ -500,27 +490,32 @@ export function Workspace() {
                 : place(p.id, i)
             }
             onClose={(g, unmounting) => {
-              if (unmounting) return remember(p.id, g, open.includes(p.id));
-              remember(p.id, g, false);
-              setOpen((l) => l.filter((x) => x !== p.id));
+              remember(p.id, g);
+              if (!unmounting) setOpen((l) => l.filter((x) => x !== p.id));
             }}
           >
             {p.node}
           </Panel>
         ))}
-      <div className="dock" role="toolbar" aria-label="Study tools">
-        {panels.map((p) => (
-          <button
-            key={p.id}
-            className={open.includes(p.id) ? "active" : ""}
-            aria-pressed={open.includes(p.id)}
-            title={p.title}
-            onClick={() => toggle(p.id)}
-          >
-            {p.icon}
-          </button>
-        ))}
-      </div>
+      {createPortal(
+        <div className="dock" role="toolbar" aria-label="Study tools">
+          {panels.map((p) => (
+            <button
+              key={p.id}
+              className={open.includes(p.id) ? "active" : ""}
+              aria-pressed={open.includes(p.id)}
+              aria-label={`${open.includes(p.id) ? "Close" : "Open"} ${p.title}`}
+              title={p.title}
+              onClick={() => toggle(p.id)}
+            >
+              {p.icon}
+            </button>
+          ))}
+        </div>,
+        // The dock lives in the topbar so the tools are always in reach
+        // and never float over the content being read.
+        document.getElementById("tool-dock") || document.body,
+      )}
     </>
   );
 }

@@ -6,8 +6,7 @@ import {
   Layers,
   Check,
   WandSparkles,
-  RefreshCw,
-  CreditCard,
+  Infinity,
 } from "lucide-react";
 import { useStore } from "../store";
 import { api, send } from "../api";
@@ -15,13 +14,15 @@ import type { CreditInfo, Deck } from "../types";
 import { PageTitle, ErrorMessage } from "../components/ui";
 import { DeckEditor } from "../components/DeckEditor";
 export function Generate() {
-  const { user, auth, notify } = useStore();
+  const { user, auth, notify, plan, pro, upgrade } = useStore();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [credits, setCredits] = useState<CreditInfo | null>(null);
+  const monthlyLimit = plan?.limits.generationsPerMonth ?? 3;
+  const maxCards = plan?.limits.maxCardsPerGeneration ?? 20;
+  const remaining = Math.max(0, monthlyLimit - (plan?.generationsUsed ?? 0));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [payBusy, setPayBusy] = useState("");
   const [history, setHistory] = useState<
     {
       id: string;
@@ -88,21 +89,6 @@ export function Generate() {
       await loadCredits();
     }
   }
-  async function checkout(pack: string) {
-    if (!user) return auth();
-    setPayBusy(pack);
-    setError("");
-    try {
-      const { url } = await send<{ url: string }>("/checkout", {
-        pack,
-        requestId: crypto.randomUUID(),
-      });
-      window.location.assign(url);
-    } catch (e) {
-      setError((e as Error).message);
-      setPayBusy("");
-    }
-  }
   return (
     <>
       <PageTitle
@@ -118,7 +104,11 @@ export function Generate() {
                 <WandSparkles size={22} />
                 Let’s make something stick.
               </h2>
-              <span className="pill muted-pill">1 credit per set</span>
+              <span className="pill muted-pill">
+                {pro
+                  ? "Unlimited · up to 100 cards"
+                  : `Up to ${maxCards} cards`}
+              </span>
             </div>
             <label>
               01 · What are we exploring?
@@ -220,8 +210,9 @@ export function Generate() {
             )}
             {credits?.connected && !credits.generationReady && (
               <p className="info-note">
-                The AI provider is not configured yet. No credits will be
-                charged.
+                The AI provider is not configured yet, so generation is
+                unavailable. Nothing will be charged and your monthly allowance
+                is untouched.
               </p>
             )}
             <button
@@ -330,56 +321,52 @@ export function Generate() {
         </div>
         <aside className="generation-aside">
           <section className="credits-card">
-            <span className="eyebrow">A LITTLE CREATIVE FUEL</span>
+            <span className="eyebrow">
+              {pro ? "MEMIFY PRO" : "A LITTLE CREATIVE FUEL"}
+            </span>
             <div className="credits-number">
-              {user ? (credits?.balance ?? "—") : "3"}
-              <Sparkles size={25} />
+              {pro ? <Infinity size={54} /> : user ? remaining : 3}
+              {!pro && <Sparkles size={25} />}
             </div>
-            <h3>{user ? "generation credits" : "generations, on us."}</h3>
+            <h3>
+              {pro
+                ? "generations. Unlimited."
+                : user
+                  ? "generations left this month"
+                  : "generations, on us."}
+            </h3>
             <p>
-              {user
-                ? "One credit turns a topic into up to 20 learning cards."
-                : "Start with 3 free generations after verifying your email. No card needed."}
+              {pro
+                ? "Up to 100 cards in a single set, as often as you like."
+                : user
+                  ? `The free plan includes ${monthlyLimit} sets a month of up to ${maxCards} cards.`
+                  : "Start with 3 free generations after verifying your email. No card needed."}
             </p>
-            {user && (
-              <button
-                className="text-button"
-                onClick={() => void loadCredits()}
-              >
-                <RefreshCw size={14} />
-                Refresh balance
-              </button>
-            )}
           </section>
-          <section className="panel pricing-panel">
-            <h3>Keep your curiosity going.</h3>
-            <p className="small muted">One-time packs. No subscription.</p>
-            {[
-              { id: "small", credits: 49, price: 2 },
-              { id: "large", credits: 100, price: 5 },
-            ].map((p) => (
+          {!pro && (
+            <section className="panel pricing-panel">
+              <h3>Keep your curiosity going.</h3>
+              <p className="small muted">
+                One subscription. Every tool, and unlimited AI.
+              </p>
               <button
-                key={p.id}
-                disabled={
-                  Boolean(payBusy) ||
-                  Boolean(user && (!user.verified || !credits?.paymentsReady))
+                className="button primary full"
+                onClick={() =>
+                  user
+                    ? upgrade(
+                        "Unlimited AI sets of up to 100 cards, and every study tool.",
+                      )
+                    : auth("signup")
                 }
-                className="price-option"
-                onClick={() => void checkout(p.id)}
               >
-                <span>
-                  <strong>{p.credits} credits</strong>
-                  <small>Up to {p.credits * 20} cards</small>
-                </span>
-                <b>{payBusy === p.id ? "…" : `$${p.price}`}</b>
-                <ArrowUpRightIcon />
+                <Sparkles size={15} />
+                {user ? "See the plans" : "Create an account"}
               </button>
-            ))}
-            <p className="payment-note">
-              <CreditCard size={13} />
-              Secure checkout with Stripe
-            </p>
-          </section>
+              <p className="payment-note">
+                From ₹167/month, billed yearly · cancel anytime
+              </p>
+            </section>
+          )}
           <div className="generation-tip">
             <span>✦</span>
             <h3>
@@ -409,7 +396,4 @@ export function Generate() {
       )}
     </>
   );
-}
-function ArrowUpRightIcon() {
-  return <ArrowRight size={16} className="price-arrow" />;
 }

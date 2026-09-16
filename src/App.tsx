@@ -193,6 +193,7 @@ export default function App() {
             </strong>
           </div>
           <div className="topbar-actions">
+            <span id="tool-dock" />
             <button
               className="search-trigger"
               aria-label="Search workspace"

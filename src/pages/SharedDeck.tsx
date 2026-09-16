@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Bookmark, Layers, Plus } from "lucide-react";
+import { ArrowLeft, Layers, Play, Plus } from "lucide-react";
 import { useStore } from "../store";
 import { api, send } from "../api";
 import { DeckIcon, Empty } from "../components/ui";
@@ -82,7 +82,7 @@ export function SharedDeck() {
           Save to my library
         </button>
         <Link className="button secondary" to={`/study/${deck.id}?preview`}>
-          <Bookmark size={15} />
+          <Play size={14} />
           Try these cards
         </Link>
       </div>

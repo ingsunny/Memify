@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronUp, Layers, Compass, Bookmark } from "lucide-react";
+import { ChevronUp, Layers, Compass, ArrowUpRight } from "lucide-react";
 import { useStore } from "../store";
 import { api, send } from "../api";
 import { PageTitle, Empty, DeckIcon } from "../components/ui";
@@ -56,7 +56,7 @@ export function VoteButton({
 }
 
 export function Discover() {
-  const { user, notify, refresh, upgrade } = useStore();
+  const { notify } = useStore();
   const [decks, setDecks] = useState<SharedDeck[]>([]);
   const [categories, setCategories] = useState<
     { category: string; n: number }[]
@@ -90,22 +90,6 @@ export function Discover() {
     const id = setTimeout(() => void load(), query ? 280 : 0);
     return () => clearTimeout(id);
   }, [load, query]);
-
-  const save = async (deck: SharedDeck) => {
-    if (!user) return notify("Sign in to keep a collection.");
-    try {
-      await send(`/shared/${deck.id}/save`);
-      await refresh();
-      notify(`“${deck.title}” is in your library.`);
-      setDecks((l) =>
-        l.map((d) => (d.id === deck.id ? { ...d, saves: d.saves + 1 } : d)),
-      );
-    } catch (e) {
-      const message = (e as Error).message;
-      if (message.includes("Upgrade")) return upgrade(message);
-      notify(message);
-    }
-  };
 
   const total = categories.reduce((n, c) => n + c.n, 0);
   return (
@@ -195,13 +179,7 @@ export function Discover() {
                     {deck.cardCount}
                   </span>
                   <span className="row-author">by {deck.author}</span>
-                  <button
-                    className="button small-button secondary"
-                    onClick={() => void save(deck)}
-                  >
-                    <Bookmark size={13} />
-                    Save
-                  </button>
+                  <ArrowUpRight size={16} className="row-arrow" />
                 </article>
               );
             return (
@@ -233,16 +211,7 @@ export function Discover() {
                     </span>
                     <span className="shared-author">by {deck.author}</span>
                   </div>
-                  <div className="shared-actions">
-                    {vote}
-                    <button
-                      className="button small-button secondary"
-                      onClick={() => void save(deck)}
-                    >
-                      <Bookmark size={13} />
-                      Save
-                    </button>
-                  </div>
+                  <div className="shared-actions">{vote}</div>
                 </div>
               </article>
             );

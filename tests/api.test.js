@@ -349,3 +349,18 @@ test("workspace layout round-trips and rejects oversized state", async () => {
     413,
   );
 });
+
+test("workspace stores placement only, never whether a tool was open", async () => {
+  const user = await request("/auth/signup", profile("tools@example.com"));
+  // The client must not persist an open flag: a tool window is an
+  // explicit action and must never reappear on its own after a refresh.
+  const state = { notes: { x: 120, y: 80, w: 340, h: 380 } };
+  await request("/workspace", { state }, user.cookie, "PUT");
+  const saved = (await request("/workspace", null, user.cookie)).body;
+  assert.deepEqual(saved, state);
+  for (const panel of Object.values(saved))
+    assert.ok(
+      !("open" in panel),
+      "geometry must not carry an open flag back to the client",
+    );
+});

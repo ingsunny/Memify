@@ -12,34 +12,61 @@ import { useStore } from "../store";
 import { dueCards, type Card, type Deck } from "../types";
 import { api, send } from "../api";
 import { Empty, ErrorMessage } from "../components/ui";
+/**
+ * A preview id may be a static starter slug or a shared-library deck.
+ * The session snapshots its queue once on mount, so a shared deck has to
+ * be resolved *before* the session exists — otherwise the snapshot is
+ * taken while the fetch is still in flight and the queue stays empty.
+ */
 export function Study() {
+  const { id } = useParams();
+  const [params] = useSearchParams();
+  const { catalog } = useStore();
+  const preview = params.has("preview");
+  const needsFetch = preview && !!id && !catalog.some((d) => d.id === id);
+  const [shared, setShared] = useState<Deck | null>(null);
+  const [missing, setMissing] = useState("");
+  useEffect(() => {
+    if (!needsFetch) return;
+    let active = true;
+    void api<Deck>(`/shared/${id}`)
+      .then((d) => active && setShared({ ...d, cards: d.cards || [] }))
+      .catch((e) => active && setMissing((e as Error).message));
+    return () => {
+      active = false;
+    };
+  }, [needsFetch, id]);
+  if (missing)
+    return (
+      <Empty title="This collection has moved on." text={missing}>
+        <Link className="button primary" to="/discover">
+          Back to Discover
+        </Link>
+      </Empty>
+    );
+  if (needsFetch && !shared)
+    return (
+      <div className="loading-state">
+        <span className="spinner" />
+        Opening the collection…
+      </div>
+    );
+  return <StudySession key={id} shared={shared} />;
+}
+
+function StudySession({ shared }: { shared: Deck | null }) {
   const { id } = useParams();
   const [params] = useSearchParams();
   const { decks, catalog, refresh } = useStore();
   const preview = params.has("preview");
   const quiz = params.get("mode") === "quiz";
-  // A preview id may be a static starter slug or a shared-library deck;
-  // the latter is fetched on demand since it isn't held in the store.
-  const [shared, setShared] = useState<Deck | null>(null);
-  useEffect(() => {
-    if (!preview || !id || catalog.some((d) => d.id === id)) return;
-    void api<Deck>(`/shared/${id}`)
-      .then((d) => setShared({ ...d, cards: d.cards || [] }))
-      .catch(() => undefined);
-  }, [preview, id, catalog]);
   const sources = preview
-    ? catalog.some((d) => d.id === id)
-      ? catalog.filter((d) => d.id === id)
-      : shared
-        ? [shared]
-        : []
+    ? shared
+      ? [shared]
+      : catalog.filter((d) => d.id === id)
     : id === "all"
       ? decks
       : decks.filter((d) => d.id === id);
-  // The queue is snapshotted once, so hold the render until a shared
-  // deck has loaded; otherwise it would freeze as empty.
-  const awaitingShared =
-    preview && !!id && !catalog.some((d) => d.id === id) && !shared;
   const [queue] = useState<Card[]>(() => {
     const due = sources.flatMap(dueCards);
     return quiz || preview || !due.length
@@ -104,13 +131,6 @@ export function Study() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   });
-  if (awaitingShared)
-    return (
-      <div className="loading-state">
-        <span className="spinner" />
-        Opening the collection…
-      </div>
-    );
   if (!queue.length)
     return (
       <Empty

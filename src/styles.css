@@ -4532,3 +4532,135 @@ summary:focus-visible,
     flex: 0 0 auto;
   }
 }
+
+/* ============================================================
+   Round of fixes: narrow-screen columns, the topbar tool dock,
+   and the deck detail header on a phone.
+   ============================================================ */
+
+/* One card per row once two would be too narrow to read. Two columns at
+   phone width squeezed the title to three or four words per line. */
+@media (max-width: 620px) {
+  .deck-grid,
+  .deck-grid.two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .deck-art {
+    height: 120px;
+  }
+  .deck-copy h3 {
+    font-size: 15px;
+  }
+  .deck-copy p {
+    font-size: 10px;
+  }
+}
+
+/* --- Tool dock, now in the topbar --- */
+#tool-dock {
+  display: inline-flex;
+}
+.dock {
+  position: static;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #eff5f0;
+  backdrop-filter: none;
+  border: 1px solid #e2ede3;
+  box-shadow: none;
+}
+.dock button {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+}
+.dock button.active {
+  box-shadow: 0 1px 3px rgba(31, 84, 55, 0.14);
+}
+
+/* --- Deck detail header --- */
+/* The hero stacked awkwardly on a phone: the vote pill pushed the title
+   into a narrow column beside the icon. Stack it and let text run full
+   width instead. */
+@media (max-width: 760px) {
+  .deck-detail-hero {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px 17px;
+  }
+  .deck-detail-hero > div {
+    order: 3;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .deck-detail-hero h1 {
+    font-size: 21px;
+    line-height: 1.3;
+  }
+  .detail-icon {
+    padding: 13px;
+    border-radius: 14px;
+  }
+  .detail-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+  .detail-vote {
+    margin-left: auto;
+  }
+  .detail-toolbar {
+    gap: 9px;
+    margin: 18px 0 26px;
+  }
+  .detail-toolbar .button {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+  .card-list summary {
+    gap: 10px;
+    padding: 14px 12px;
+    font-size: 11px;
+    align-items: flex-start;
+  }
+  .card-list details p {
+    padding: 14px 12px;
+  }
+}
+
+/* --- Topbar crowding --- */
+@media (max-width: 760px) {
+  /* The dock earns its place ahead of the search label on a phone. */
+  .topbar-actions {
+    gap: 9px;
+  }
+  .dock button {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* On a phone the select and input compete for one row; give the select
+   only what its label needs and let the input take the rest. */
+@media (max-width: 620px) {
+  .search-filter {
+    padding-right: 10px;
+    gap: 7px;
+  }
+  .filter-select select {
+    max-width: 112px;
+    padding: 11px 22px 11px 11px;
+    font-size: 10px;
+    text-overflow: ellipsis;
+  }
+  .filter-select svg {
+    right: 6px;
+  }
+  .search-filter input {
+    font-size: 11px;
+    text-overflow: ellipsis;
+  }
+}
