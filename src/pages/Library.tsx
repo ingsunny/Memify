@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Plus, Search, Upload, Layers, Compass } from "lucide-react";
+import { Plus, Upload, Layers, Compass } from "lucide-react";
 import { useStore } from "../store";
 import { DeckCard, DeckRow, PageTitle, Empty } from "../components/ui";
 import { ViewToggle, useDeckView } from "../components/ViewToggle";
+import { SearchFilter } from "../components/SearchFilter";
 import { DeckEditor } from "../components/DeckEditor";
 import type { Deck } from "../types";
 export function Library({ discover = false }: { discover?: boolean }) {
@@ -104,28 +105,22 @@ export function Library({ discover = false }: { discover?: boolean }) {
         onChange={(e) => void importFile(e.target.files?.[0])}
       />
       <div className="library-toolbar">
-        <div className="filter-tabs">
-          {categories.map((c) => (
-            <button
-              key={c}
-              className={c === category ? "active" : ""}
-              onClick={() => setCategory(c)}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
+        <SearchFilter
+          categories={categories.map((c) => ({
+            name: c,
+            count:
+              c === "All topics"
+                ? source.length
+                : source.filter((d) => d.category === c).length,
+          }))}
+          category={category}
+          onCategory={setCategory}
+          query={query}
+          onQuery={setQuery}
+          label="Search decks"
+        />
         <div className="toolbar-right">
           <ViewToggle view={view} onChange={setView} />
-          <div className="search-field">
-            <Search size={17} />
-            <input
-              aria-label="Search decks"
-              placeholder="Find a little inspiration…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
         </div>
       </div>
       {filtered.length ? (

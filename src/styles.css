@@ -4432,3 +4432,103 @@ summary:focus-visible,
     padding: 6px 8px;
   }
 }
+
+/* ============================================================
+   Category select fused to the search input. Replaces the chip row,
+   which wrapped to two lines once a handful of categories existed.
+   ============================================================ */
+.search-filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+  padding: 0 12px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: #5f6b55;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.search-filter:focus-within {
+  border-color: var(--green-bright);
+  box-shadow: 0 0 0 3px rgba(63, 162, 104, 0.14);
+}
+.filter-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.filter-select select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  width: auto;
+  min-width: 0;
+  max-width: 190px;
+  padding: 11px 26px 11px 13px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f5c39;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+}
+.filter-select select:focus {
+  outline: none;
+  box-shadow: none;
+}
+.filter-select svg {
+  position: absolute;
+  right: 9px;
+  pointer-events: none;
+  color: #7d8c78;
+}
+.filter-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+.search-filter input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 11px 0;
+  font-size: 11px;
+}
+.search-filter input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.library-toolbar {
+  gap: 12px;
+}
+@media (max-width: 760px) {
+  .library-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-filter {
+    max-width: none;
+  }
+  .filter-select select {
+    max-width: 130px;
+  }
+  /* Keep the layout and sort switches on one row, sized to their
+     content, rather than each stretching across the screen. */
+  .library-toolbar .toolbar-right {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .library-toolbar .toolbar-right .view-toggle,
+  .library-toolbar .toolbar-right .sort-tabs {
+    flex: 0 0 auto;
+  }
+}

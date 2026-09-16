@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronUp, Layers, Search, Compass, Bookmark } from "lucide-react";
+import { ChevronUp, Layers, Compass, Bookmark } from "lucide-react";
 import { useStore } from "../store";
 import { api, send } from "../api";
 import { PageTitle, Empty, DeckIcon } from "../components/ui";
 import { ViewToggle, useDeckView } from "../components/ViewToggle";
+import { SearchFilter } from "../components/SearchFilter";
 import type { SharedDeck } from "../types";
 
 const sorts = [
@@ -115,20 +116,16 @@ export function Discover() {
         description={`${total} collections, shared and ranked by people learning the same things.`}
       />
       <div className="library-toolbar">
-        <div className="filter-tabs">
-          {["All", ...categories.map((c) => c.category)].map((c) => (
-            <button
-              key={c}
-              className={c === category ? "active" : ""}
-              onClick={() => setCategory(c)}
-            >
-              {c}
-              {c !== "All" && (
-                <small>{categories.find((x) => x.category === c)?.n}</small>
-              )}
-            </button>
-          ))}
-        </div>
+        <SearchFilter
+          categories={[
+            { name: "All", count: total },
+            ...categories.map((c) => ({ name: c.category, count: c.n })),
+          ]}
+          category={category}
+          onCategory={setCategory}
+          query={query}
+          onQuery={setQuery}
+        />
         <div className="toolbar-right">
           <ViewToggle view={view} onChange={setView} />
           <div className="sort-tabs" role="tablist" aria-label="Sort">
@@ -143,15 +140,6 @@ export function Discover() {
                 {s.label}
               </button>
             ))}
-          </div>
-          <div className="search-field">
-            <Search size={15} />
-            <input
-              value={query}
-              aria-label="Search collections"
-              placeholder="Find a little inspiration…"
-              onChange={(e) => setQuery(e.target.value)}
-            />
           </div>
         </div>
       </div>
