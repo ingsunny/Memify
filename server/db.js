@@ -88,5 +88,33 @@ export function openDatabase(path = "data/memify.db") {
     CREATE INDEX IF NOT EXISTS focus_user_time ON focus_sessions(user_id, created);
     INSERT OR IGNORE INTO migrations VALUES (2, unixepoch() * 1000);
   `);
+
+  // Migration 3: deck appearance (free colour, icon, uploaded banner).
+  // Added with ALTER so existing decks keep their rows.
+  const deckColumns = new Set(
+    db
+      .prepare("PRAGMA table_info(decks)")
+      .all()
+      .map((c) => c.name),
+  );
+  for (const [name, definition] of [
+    ["accent", "TEXT NOT NULL DEFAULT ''"],
+    ["banner", "TEXT NOT NULL DEFAULT ''"],
+  ])
+    if (!deckColumns.has(name))
+      db.exec(`ALTER TABLE decks ADD COLUMN ${name} ${definition}`);
+  db.exec(`
+    -- Migration 4: generations the user has saved or dismissed drop out
+    -- of the recent list rather than lingering after they are dealt with.
+    CREATE TABLE IF NOT EXISTS generation_state (
+      request_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      state TEXT NOT NULL,
+      created INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS generation_state_user ON generation_state(user_id);
+    INSERT OR IGNORE INTO migrations VALUES (3, unixepoch() * 1000);
+    INSERT OR IGNORE INTO migrations VALUES (4, unixepoch() * 1000);
+  `);
   return db;
 }

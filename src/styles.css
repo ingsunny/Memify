@@ -4684,3 +4684,438 @@ summary:focus-visible,
   color: #5f6b55;
   margin: 0;
 }
+
+/* ============================================================
+   Modal layout: header and actions pinned, body scrolls.
+   Previously the whole dialog scrolled, so on a short viewport the
+   save/cancel buttons sat below the fold with no way to reach them.
+   ============================================================ */
+.modal {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  /* The root carries zoom: 1.25, so a dialog sized in dvh renders 1.25x
+     taller than the viewport it measured. Dividing by the zoom keeps the
+     dialog — and its pinned action row — on screen. */
+  max-height: calc(88dvh / 1.25);
+  overflow: hidden;
+}
+.modal-head {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 22px 26px 16px;
+  border-bottom: 1px solid #eef2ec;
+  background: #fdfefb;
+}
+/* Everything between the header and the actions is the scroll region. */
+.modal > form,
+.modal > .modal-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.modal > form > *:not(.modal-actions),
+.modal > .modal-body > * {
+  flex-shrink: 0;
+}
+.modal > form {
+  gap: 0;
+}
+.modal > form > .stack-scroll,
+.modal-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.modal .modal-actions {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 15px 26px;
+  border-top: 1px solid #eef2ec;
+  background: #fdfefb;
+  gap: 10px;
+}
+@media (max-width: 620px) {
+  .modal {
+    max-height: calc(94dvh / 1.25);
+  }
+  .modal-head {
+    padding: 18px 20px 14px;
+  }
+  .modal > form > .stack-scroll,
+  .modal-scroll {
+    padding: 18px 20px;
+  }
+  .modal .modal-actions {
+    padding: 13px 20px;
+  }
+  .modal .modal-actions .button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ============================================================
+   Deck appearance: live preview, colour, icon and banner.
+   ============================================================ */
+.appearance {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.appearance-preview {
+  position: relative;
+  height: 128px;
+  border-radius: 10px;
+  border: 1px solid #e2ebe2;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background-size: cover;
+  background-position: center;
+}
+.preview-scrim {
+  position: absolute;
+  inset: 0;
+  /* Keeps the glyph and title legible over any uploaded photo. */
+  background: linear-gradient(
+    180deg,
+    rgba(20, 45, 32, 0.15),
+    rgba(20, 45, 32, 0.5)
+  );
+}
+.appearance-preview .deck-glyph,
+.appearance-preview .preview-title {
+  position: relative;
+  z-index: 1;
+}
+.preview-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e3329;
+  max-width: 85%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appearance-preview[style*="background-image"] .preview-title {
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(20, 45, 32, 0.5);
+}
+.appearance-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.appearance-controls legend {
+  margin-bottom: 8px;
+}
+.color-swatch.custom {
+  position: relative;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: conic-gradient(
+    #f2714f,
+    #f2a03d,
+    #ffe6b8,
+    #3fa268,
+    #3fa4c9,
+    #8a6bd6,
+    #e86a92,
+    #f2714f
+  );
+  border: 2px solid transparent;
+}
+.color-swatch.custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.icon-picker legend {
+  width: 100%;
+}
+.icon-picker button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #f2f7f2;
+  border: 1px solid #e4eee5;
+  color: #5c6e58;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.icon-picker button:hover {
+  background: #e6f2e9;
+  color: var(--green);
+}
+.icon-picker button.selected {
+  background: linear-gradient(140deg, #d9f2df, #c6ebd2);
+  border-color: var(--green-bright);
+  color: #1f5c39;
+}
+.banner-picker .button-group {
+  margin-bottom: 6px;
+}
+@media (max-width: 620px) {
+  .appearance {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .appearance-preview {
+    height: 108px;
+  }
+}
+
+/* --- Uploaded banners on the deck surfaces --- */
+.deck-art.has-banner,
+.deck-detail-hero.has-banner {
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.deck-art.has-banner:before,
+.deck-detail-hero.has-banner:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 45, 32, 0.12),
+    rgba(20, 45, 32, 0.46)
+  );
+}
+.deck-art.has-banner > *,
+.deck-detail-hero.has-banner > * {
+  position: relative;
+  z-index: 1;
+}
+.deck-art.has-banner .deck-glyph {
+  background: rgba(255, 255, 255, 0.9);
+}
+.deck-detail-hero.has-banner h1,
+.deck-detail-hero.has-banner p,
+.deck-detail-hero.has-banner .small,
+.deck-detail-hero.has-banner .eyebrow {
+  color: #fff;
+}
+.deck-detail-hero.has-banner .detail-icon {
+  background: rgba(255, 255, 255, 0.92);
+}
+.row-glyph.has-banner {
+  background-size: cover;
+  background-position: center;
+  color: transparent;
+}
+
+/* --- Publish toggle --- */
+.publish-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.publish-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.publish-row strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+.publish-row small {
+  display: block;
+  font-size: 10px;
+  color: #5f6b55;
+  margin-top: 3px;
+}
+.publish-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #1f5c39;
+  background: #e6f4ea;
+  border-radius: 20px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+.switch {
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  border-radius: 20px;
+  background: #dfe7de;
+  border: 0;
+  padding: 3px;
+  display: flex;
+  transition: background 0.18s ease;
+}
+.switch[aria-checked="true"] {
+  background: var(--grad-primary);
+}
+.switch span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(31, 84, 55, 0.28);
+  transition: transform 0.18s ease;
+}
+.switch[aria-checked="true"] span {
+  transform: translateX(18px);
+}
+
+/* --- Background is a colour OR an image, never both --- */
+.mode-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #eff5f0;
+  align-self: flex-start;
+}
+.mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: #5c6e58;
+}
+.mode-switch button.active {
+  background: #fff;
+  color: #1f5c39;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(31, 84, 55, 0.1);
+}
+
+/* --- Icon browser: a panel beside the controls on desktop --- */
+.appearance.browsing {
+  grid-template-columns: 200px minmax(0, 1fr) 268px;
+}
+.icon-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
+  background: #f2f7f2;
+  border: 1px solid #e4eee5;
+  color: #5c6e58;
+  font-size: 10px;
+  font-weight: 600;
+}
+.icon-more:hover,
+.icon-more.selected {
+  background: linear-gradient(140deg, #d9f2df, #c6ebd2);
+  border-color: var(--green-bright);
+  color: #1f5c39;
+}
+.icon-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2ebe2;
+  border-radius: 10px;
+  background: #fbfdfb;
+  max-height: 330px;
+}
+.icon-browser header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-browser .search-field {
+  flex: 1;
+  min-width: 0;
+}
+.icon-browser .search-field input {
+  width: 100%;
+  font-size: 11px;
+}
+.icon-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 4px;
+  align-content: start;
+}
+.icon-grid button {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: transparent;
+  color: #5c6e58;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+.icon-grid button:hover {
+  background: #e6f2e9;
+  color: var(--green);
+}
+.icon-grid button.selected {
+  background: linear-gradient(140deg, #d9f2df, #c6ebd2);
+  color: #1f5c39;
+}
+.field-hint.center {
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  /* No room for a third column: the browser becomes a sheet under the
+     controls, still inside the modal's scroll region. */
+  .appearance.browsing {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .icon-browser {
+    grid-column: 1 / -1;
+    max-height: 260px;
+  }
+}
+@media (max-width: 620px) {
+  .appearance.browsing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .icon-browser {
+    max-height: 210px;
+  }
+  .icon-grid {
+    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  }
+}

@@ -364,3 +364,98 @@ test("workspace stores placement only, never whether a tool was open", async () 
       "geometry must not carry an open flag back to the client",
     );
 });
+
+test("deck appearance persists, rejects foreign banners, and publish toggles both ways", async () => {
+  const user = await request("/auth/signup", profile("looks@example.com"));
+  db.prepare(
+    "INSERT INTO subscriptions (user_id,plan,status,renews,reference,updated) VALUES (?,?,?,?,?,?)",
+  ).run(
+    (await request("/me", null, user.cookie)).body.user.id,
+    "yearly",
+    "active",
+    Date.now() + 86400000,
+    "test",
+    Date.now(),
+  );
+  const created = await request(
+    "/decks",
+    {
+      title: "Looks",
+      category: "Personal",
+      color: "sage",
+      accent: "#7c3aed",
+      icon: "FlaskConical",
+      banner:
+        "https://res.cloudinary.com/dqmr455zn/image/upload/v1/memify/a.png",
+      cards: [{ front: "a", back: "b" }],
+    },
+    user.cookie,
+  );
+  assert.equal(created.status, 201);
+  assert.equal(created.body.accent, "#7c3aed");
+  assert.equal(created.body.icon, "FlaskConical");
+  assert.equal(created.body.published, false, "decks are private by default");
+
+  // A banner may only point at our own Cloudinary account, so a deck
+  // cannot be used to embed arbitrary remote content.
+  const foreign = await request(
+    "/decks",
+    {
+      title: "Bad",
+      category: "P",
+      color: "sage",
+      banner: "https://evil.example.com/x.png",
+      cards: [{ front: "a", back: "b" }],
+    },
+    user.cookie,
+  );
+  assert.equal(foreign.status, 400);
+
+  const published = await request(
+    `/decks/${created.body.id}/publish`,
+    { publish: true },
+    user.cookie,
+  );
+  assert.equal(published.body.published, true);
+  assert.equal(published.body.votes, 0);
+  assert.ok(
+    (await request("/shared")).body.decks.some((d) => d.title === "Looks"),
+    "a published deck appears in the shared library",
+  );
+
+  const retracted = await request(
+    `/decks/${created.body.id}/publish`,
+    { publish: false },
+    user.cookie,
+  );
+  assert.equal(retracted.body.published, false);
+  assert.ok(
+    !(await request("/shared")).body.decks.some((d) => d.title === "Looks"),
+    "retracting removes it from the library again",
+  );
+});
+
+test("handled generations drop out of the recent list", async () => {
+  const user = await request("/auth/signup", profile("gens@example.com"));
+  const id = randomUUID();
+  assert.equal(
+    (
+      await request(
+        `/generations/${id}/dismiss`,
+        { state: "saved" },
+        user.cookie,
+      )
+    ).status,
+    200,
+  );
+  // Dismissals are per account, so one user cannot hide another's work.
+  const other = await request("/auth/signup", profile("gens2@example.com"));
+  const rows = db
+    .prepare("SELECT user_id FROM generation_state WHERE request_id=?")
+    .all(id);
+  assert.equal(rows.length, 1);
+  assert.notEqual(
+    rows[0].user_id,
+    (await request("/me", null, other.cookie)).body.user.id,
+  );
+});

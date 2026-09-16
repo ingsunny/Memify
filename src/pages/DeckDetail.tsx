@@ -9,6 +9,9 @@ import {
   Plus,
   Layers,
   Check,
+  ChevronUp,
+  Globe,
+  Lock,
 } from "lucide-react";
 import { useStore } from "../store";
 import { dueCards, type Deck } from "../types";
@@ -18,7 +21,7 @@ import { DeckIcon, Empty, Modal, ErrorMessage } from "../components/ui";
 export function DeckDetail({ discover = false }: { discover?: boolean }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, decks, catalog, auth, refresh, notify } = useStore();
+  const { user, decks, catalog, auth, refresh, notify, upgrade } = useStore();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -63,13 +66,46 @@ export function DeckDetail({ discover = false }: { discover?: boolean }) {
       setBusy(false);
     }
   }
+  async function togglePublish() {
+    // Captured locally: TypeScript cannot narrow the outer `deck` inside
+    // a closure, even though the guard above has already returned.
+    const current = deck!;
+    setBusy(true);
+    setError("");
+    try {
+      await send(`/decks/${current.id}/publish`, {
+        publish: !current.published,
+      });
+      await refresh();
+      notify(
+        current.published
+          ? "This deck is private again."
+          : "Your deck is live in Discover.",
+      );
+    } catch (e) {
+      const message = (e as Error).message;
+      if (message.includes("Pro")) upgrade(message);
+      else setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <Link className="back-link" to={discover ? "/discover" : "/library"}>
         <ArrowLeft size={16} />
         {discover ? "All collections" : "Your library"}
       </Link>
-      <section className={`deck-detail-hero ${deck.color}`}>
+      <section
+        className={`deck-detail-hero ${deck.color} ${deck.banner ? "has-banner" : ""}`}
+        style={
+          deck.banner
+            ? { backgroundImage: `url(${deck.banner})` }
+            : deck.accent
+              ? { background: deck.accent }
+              : undefined
+        }
+      >
         <span className="detail-icon">
           <DeckIcon icon={deck.icon} size={48} />
         </span>
@@ -82,6 +118,38 @@ export function DeckDetail({ discover = false }: { discover?: boolean }) {
           </span>
         </div>
       </section>
+      {!discover && (
+        <div className="publish-row">
+          {deck.published ? <Globe size={17} /> : <Lock size={17} />}
+          <div>
+            <strong>
+              {deck.published ? "Public in Discover" : "Private to you"}
+            </strong>
+            <small>
+              {deck.published
+                ? "Anyone can find, upvote and save this deck."
+                : "Only you can see this deck. Publish it to share."}
+            </small>
+          </div>
+          {deck.published && (
+            <span className="publish-stats">
+              <ChevronUp size={13} />
+              {deck.votes || 0} upvotes · {deck.saves || 0} saves
+            </span>
+          )}
+          <button
+            type="button"
+            role="switch"
+            className="switch"
+            aria-checked={Boolean(deck.published)}
+            aria-label={deck.published ? "Make private" : "Make public"}
+            disabled={busy}
+            onClick={() => void togglePublish()}
+          >
+            <span />
+          </button>
+        </div>
+      )}
       <div className="detail-toolbar">
         <div className="button-group">
           {discover ? (

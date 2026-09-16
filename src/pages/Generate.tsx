@@ -7,6 +7,7 @@ import {
   Check,
   WandSparkles,
   Infinity,
+  Trash2,
 } from "lucide-react";
 import { useStore } from "../store";
 import { api, send } from "../api";
@@ -33,6 +34,7 @@ export function Generate() {
   >([]);
   const [result, setResult] = useState<Partial<Deck> | null>(null);
   const [editing, setEditing] = useState(false);
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const [requestId, setRequestId] = useState(crypto.randomUUID());
   const [form, setForm] = useState({
     topic: "",
@@ -87,6 +89,16 @@ export function Generate() {
     } finally {
       setBusy(false);
       await loadCredits();
+    }
+  }
+  async function dismiss(id: string, state = "dismissed") {
+    setHistory((list) => list.filter((item) => item.id !== id));
+    setReviewing(null);
+    try {
+      await send(`/generations/${id}/dismiss`, { state });
+    } catch {
+      // The row is already hidden locally; a failure here only means it
+      // returns on the next load, which is preferable to losing it.
     }
   }
   return (
@@ -298,21 +310,31 @@ export function Generate() {
                       </strong>
                       <small>{new Date(item.created).toLocaleString()}</small>
                     </div>
-                    {item.result && (
+                    <div className="button-group">
+                      {item.result && (
+                        <button
+                          className="button secondary small-button"
+                          onClick={() => {
+                            setResult({
+                              ...item.result,
+                              category: "AI generated",
+                              color: "lilac",
+                            });
+                            setReviewing(item.id);
+                            setEditing(true);
+                          }}
+                        >
+                          Review & save
+                        </button>
+                      )}
                       <button
-                        className="button secondary"
-                        onClick={() => {
-                          setResult({
-                            ...item.result,
-                            category: "AI generated",
-                            color: "lilac",
-                          });
-                          setEditing(true);
-                        }}
+                        className="icon-button"
+                        aria-label={`Remove ${item.result?.title || "this generation"}`}
+                        onClick={() => void dismiss(item.id)}
                       >
-                        Review & save
+                        <Trash2 size={15} />
                       </button>
-                    )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -386,6 +408,7 @@ export function Generate() {
           close={() => setEditing(false)}
           saved={(d) => {
             setResult(null);
+            if (reviewing) void dismiss(reviewing, "saved");
             navigate(
               form.mode === "quiz"
                 ? `/study/${d.id}?mode=quiz`

@@ -9,6 +9,8 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { deckIcons } from "./DeckAppearance";
+import { DynamicIcon } from "./DynamicIcon";
 import type { Deck } from "../types";
 import { dueCards } from "../types";
 export function Modal({
@@ -16,11 +18,14 @@ export function Modal({
   children,
   close,
   wide = false,
+  scroll = true,
 }: {
   title: string;
   children: ReactNode;
   close: () => void;
   wide?: boolean;
+  /** Children own the scroll region (a form with pinned actions). */
+  scroll?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const closeRef = useRef(close);
@@ -59,7 +64,7 @@ export function Modal({
           <X size={20} />
         </button>
       </div>
-      {children}
+      {scroll ? <div className="modal-scroll">{children}</div> : children}
     </dialog>
   );
 }
@@ -70,17 +75,11 @@ export function DeckIcon({
   icon?: string;
   size?: number;
 }) {
-  const Icon =
-    icon === "brain"
-      ? Brain
-      : icon === "shapes"
-        ? Shapes
-        : icon === "languages"
-          ? Languages
-          : icon === "code"
-            ? Code2
-            : Layers;
-  return <Icon size={size} strokeWidth={1.6} />;
+  // Short keys come from the quick picks and render immediately; any
+  // other value is a Lucide name resolved without loading the namespace.
+  const Quick = deckIcons[icon as keyof typeof deckIcons];
+  if (Quick) return <Quick size={size} strokeWidth={1.6} />;
+  return <DynamicIcon name={icon} size={size} />;
 }
 export function DeckRow({
   deck,
@@ -95,7 +94,16 @@ export function DeckRow({
       className={`deck-row ${deck.color}`}
       to={`${discover ? "/discover" : "/decks"}/${deck.id}`}
     >
-      <span className="row-glyph">
+      <span
+        className={`row-glyph ${deck.banner ? "has-banner" : ""}`}
+        style={
+          deck.banner
+            ? { backgroundImage: `url(${deck.banner})` }
+            : deck.accent
+              ? { background: deck.accent }
+              : undefined
+        }
+      >
         <DeckIcon icon={deck.icon} size={20} />
       </span>
       <span className="row-main">
@@ -131,7 +139,16 @@ export function DeckCard({
       className={`deck-card ${deck.color}`}
       to={`${discover ? "/discover" : "/decks"}/${deck.id}`}
     >
-      <div className="deck-art">
+      <div
+        className={`deck-art ${deck.banner ? "has-banner" : ""}`}
+        style={
+          deck.banner
+            ? { backgroundImage: `url(${deck.banner})` }
+            : deck.accent
+              ? { background: deck.accent }
+              : undefined
+        }
+      >
         <span className="deck-glyph">
           <DeckIcon icon={deck.icon} size={34} />
         </span>

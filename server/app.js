@@ -35,11 +35,32 @@ const cardSchema = z.object({
   front: text(2000),
   back: text(4000),
 });
+// A hex accent overrides the named palette colour when present, and the
+// banner is restricted to our own Cloudinary account so a deck cannot be
+// used to hotlink or embed arbitrary remote content.
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const bannerUrl = z
+  .string()
+  .max(400)
+  .refine(
+    (v) => v === "" || /^https:\/\/res\.cloudinary\.com\/[\w-]+\//.test(v),
+    "Banner must be an uploaded image.",
+  );
 const deckSchema = z.object({
   title: text(100),
   description: z.string().trim().max(500).default(""),
   category: text(50).default("Personal"),
   color: z.enum(["sage", "peach", "lilac", "blue", "yellow"]).default("sage"),
+  accent: z.union([hexColor, z.literal("")]).default(""),
+  // Any Lucide component name; constrained in shape rather than to a
+  // fixed list so the picker can offer the whole set.
+  icon: z
+    .string()
+    .trim()
+    .max(40)
+    .regex(/^[A-Za-z][A-Za-z0-9]*$/)
+    .default("layers"),
+  banner: bannerUrl.default(""),
   cards: z.array(cardSchema).min(1).max(500),
 });
 const noteSchema = z.object({
@@ -171,7 +192,7 @@ export function createApp({
     const id = randomUUID();
     const now = Date.now();
     db.prepare(
-      "INSERT INTO decks (id,user_id,title,description,category,color,icon,source,created) VALUES (?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO decks (id,user_id,title,description,category,color,accent,icon,banner,source,created) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
     ).run(
       id,
       userId,
@@ -179,7 +200,9 @@ export function createApp({
       data.description || "",
       data.category || "Personal",
       data.color || "sage",
+      data.accent || "",
       data.icon || "layers",
+      data.banner || "",
       source,
       now,
     );
@@ -195,8 +218,19 @@ export function createApp({
       .prepare("SELECT * FROM decks WHERE id=? AND user_id=?")
       .get(id, userId);
     if (!deck) throw fail(404, "Deck not found.");
+    // Decks are private unless a shared copy exists; the votes travel
+    // back with it so the owner can see how it is doing.
+    const shared = db
+      .prepare(
+        "SELECT id, votes, saves FROM shared_decks WHERE deck_id=? AND user_id=?",
+      )
+      .get(id, userId);
     return {
       ...deck,
+      published: Boolean(shared),
+      sharedId: shared?.id || null,
+      votes: shared?.votes || 0,
+      saves: shared?.saves || 0,
       cards: db
         .prepare("SELECT * FROM cards WHERE deck_id=? ORDER BY rowid")
         .all(id),
@@ -459,13 +493,31 @@ export function createApp({
         if (c.id) seen.add(c.id);
       }
       db.prepare(
-        "UPDATE decks SET title=?,description=?,category=?,color=? WHERE id=?",
+        "UPDATE decks SET title=?,description=?,category=?,color=?,accent=?,icon=?,banner=? WHERE id=?",
       ).run(
         data.title,
         data.description,
         data.category,
         data.color,
+        data.accent || "",
+        data.icon || "layers",
+        data.banner || "",
         original.id,
+      );
+      // Keep a published copy in step with the deck it came from.
+      db.prepare(
+        "UPDATE shared_decks SET title=?,description=?,category=?,color=?,cards=?,card_count=? WHERE deck_id=? AND user_id=?",
+      ).run(
+        data.title,
+        data.description,
+        data.category,
+        data.color,
+        JSON.stringify(
+          data.cards.map((c) => ({ front: c.front, back: c.back })),
+        ),
+        data.cards.length,
+        original.id,
+        req.user.id,
       );
       for (const c of data.cards) {
         if (c.id)
@@ -483,6 +535,42 @@ export function createApp({
         if (!seen.has(id)) db.prepare("DELETE FROM cards WHERE id=?").run(id);
     })();
     res.json(deckFor(req.user.id, req.params.id));
+  });
+  app.post("/api/decks/:id/publish", auth, (req, res) => {
+    const { publish } = z.object({ publish: z.boolean() }).parse(req.body);
+    const deck = deckFor(req.user.id, req.params.id);
+    if (!publish) {
+      db.prepare("DELETE FROM shared_decks WHERE deck_id=? AND user_id=?").run(
+        deck.id,
+        req.user.id,
+      );
+      return res.json(deckFor(req.user.id, deck.id));
+    }
+    const limits = entitlements(subFor(req.user.id));
+    if (!limits.publish)
+      throw fail(
+        402,
+        "Publishing to the library is part of Memify Pro. Upgrade to share your decks.",
+      );
+    if (!deck.published)
+      db.prepare(
+        "INSERT INTO shared_decks (id,deck_id,user_id,author,title,description,category,color,cards,card_count,votes,saves,seeded,created) VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0,?)",
+      ).run(
+        randomUUID(),
+        deck.id,
+        req.user.id,
+        req.user.name,
+        deck.title,
+        deck.description,
+        deck.category,
+        deck.color,
+        JSON.stringify(
+          deck.cards.map((c) => ({ front: c.front, back: c.back })),
+        ),
+        deck.cards.length,
+        Date.now(),
+      );
+    res.json(deckFor(req.user.id, deck.id));
   });
   app.delete("/api/decks/:id", auth, (req, res) => {
     deckFor(req.user.id, req.params.id);
@@ -604,7 +692,28 @@ export function createApp({
   });
   app.get("/api/generations", auth, async (req, res) => {
     if (!config.cloudUrl) return res.json([]);
-    res.json(await cloud(req.user, "/v1/generations", {}));
+    const items = await cloud(req.user, "/v1/generations", {});
+    // A set that has been saved to a deck, or dismissed, is finished
+    // business and should not keep occupying the recent list.
+    const handled = new Set(
+      db
+        .prepare("SELECT request_id FROM generation_state WHERE user_id=?")
+        .all(req.user.id)
+        .map((r) => r.request_id),
+    );
+    res.json(items.filter((item) => !handled.has(item.id)));
+  });
+  app.post("/api/generations/:id/dismiss", auth, (req, res) => {
+    const { state } = z
+      .object({ state: z.enum(["saved", "dismissed"]).default("dismissed") })
+      .parse(req.body);
+    db.prepare("INSERT OR REPLACE INTO generation_state VALUES (?,?,?,?)").run(
+      req.params.id,
+      req.user.id,
+      state,
+      Date.now(),
+    );
+    res.json({ ok: true });
   });
   app.post("/api/generate", auth, async (req, res) => {
     if (!req.user.verified)

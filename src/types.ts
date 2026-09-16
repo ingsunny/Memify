@@ -21,9 +21,15 @@ export type Deck = {
   description: string;
   category: string;
   color: string;
+  accent?: string;
   icon?: string;
+  banner?: string;
   cards: Card[];
   source?: string;
+  published?: boolean;
+  sharedId?: string | null;
+  votes?: number;
+  saves?: number;
 };
 export type Review = { rating: string; created: number };
 export type CreditInfo = {
