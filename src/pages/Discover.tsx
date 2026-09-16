@@ -4,6 +4,7 @@ import { ChevronUp, Layers, Search, Compass, Bookmark } from "lucide-react";
 import { useStore } from "../store";
 import { api, send } from "../api";
 import { PageTitle, Empty, DeckIcon } from "../components/ui";
+import { ViewToggle, useDeckView } from "../components/ViewToggle";
 import type { SharedDeck } from "../types";
 
 const sorts = [
@@ -63,6 +64,7 @@ export function Discover() {
   const [sort, setSort] = useState("top");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useDeckView("discover");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -128,6 +130,7 @@ export function Discover() {
           ))}
         </div>
         <div className="toolbar-right">
+          <ViewToggle view={view} onChange={setView} />
           <div className="sort-tabs" role="tablist" aria-label="Sort">
             {sorts.map((s) => (
               <button
@@ -164,44 +167,46 @@ export function Discover() {
           text="Try another topic, or be the first to publish a collection here."
         />
       ) : (
-        <div className="deck-grid">
-          {decks.map((deck) => (
-            <article key={deck.id} className={`deck-card shared ${deck.color}`}>
-              <Link
-                className="deck-art"
-                to={`/discover/${deck.id}`}
-                aria-label={`Open ${deck.title}`}
-              >
-                <span className="deck-glyph">
-                  <DeckIcon size={32} />
-                </span>
-                <span className="art-orbit orbit-one" />
-                <span className="art-orbit orbit-two" />
-              </Link>
-              <div className="deck-copy">
-                <span className="eyebrow">{deck.category}</span>
-                <h3>
-                  <Link to={`/discover/${deck.id}`}>{deck.title}</Link>
-                </h3>
-                <p>{deck.description}</p>
-                <div className="deck-meta">
-                  <span>
-                    <Layers size={13} />
-                    {deck.cardCount} cards
+        <div className={view === "grid" ? "deck-grid" : "deck-list"}>
+          {decks.map((deck) => {
+            const vote = (
+              <VoteButton
+                deck={deck}
+                onChange={(votes, voted) =>
+                  setDecks((l) =>
+                    l.map((d) =>
+                      d.id === deck.id ? { ...d, votes, voted } : d,
+                    ),
+                  )
+                }
+              />
+            );
+            if (view === "list")
+              return (
+                <article
+                  key={deck.id}
+                  className={`deck-row shared ${deck.color}`}
+                >
+                  {vote}
+                  <Link
+                    className="row-glyph"
+                    to={`/discover/${deck.id}`}
+                    aria-label={`Open ${deck.title}`}
+                  >
+                    <DeckIcon size={20} />
+                  </Link>
+                  <span className="row-main">
+                    <strong>
+                      <Link to={`/discover/${deck.id}`}>{deck.title}</Link>
+                    </strong>
+                    <small>{deck.description}</small>
                   </span>
-                  <span className="shared-author">by {deck.author}</span>
-                </div>
-                <div className="shared-actions">
-                  <VoteButton
-                    deck={deck}
-                    onChange={(votes, voted) =>
-                      setDecks((l) =>
-                        l.map((d) =>
-                          d.id === deck.id ? { ...d, votes, voted } : d,
-                        ),
-                      )
-                    }
-                  />
+                  <span className="row-category">{deck.category}</span>
+                  <span className="row-count">
+                    <Layers size={13} />
+                    {deck.cardCount}
+                  </span>
+                  <span className="row-author">by {deck.author}</span>
                   <button
                     className="button small-button secondary"
                     onClick={() => void save(deck)}
@@ -209,10 +214,51 @@ export function Discover() {
                     <Bookmark size={13} />
                     Save
                   </button>
+                </article>
+              );
+            return (
+              <article
+                key={deck.id}
+                className={`deck-card shared ${deck.color}`}
+              >
+                <Link
+                  className="deck-art"
+                  to={`/discover/${deck.id}`}
+                  aria-label={`Open ${deck.title}`}
+                >
+                  <span className="deck-glyph">
+                    <DeckIcon size={32} />
+                  </span>
+                  <span className="art-orbit orbit-one" />
+                  <span className="art-orbit orbit-two" />
+                </Link>
+                <div className="deck-copy">
+                  <span className="eyebrow">{deck.category}</span>
+                  <h3>
+                    <Link to={`/discover/${deck.id}`}>{deck.title}</Link>
+                  </h3>
+                  <p>{deck.description}</p>
+                  <div className="deck-meta">
+                    <span>
+                      <Layers size={13} />
+                      {deck.cardCount} cards
+                    </span>
+                    <span className="shared-author">by {deck.author}</span>
+                  </div>
+                  <div className="shared-actions">
+                    {vote}
+                    <button
+                      className="button small-button secondary"
+                      onClick={() => void save(deck)}
+                    >
+                      <Bookmark size={13} />
+                      Save
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
     </>

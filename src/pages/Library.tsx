@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Search, Upload, Layers, Compass } from "lucide-react";
 import { useStore } from "../store";
-import { DeckCard, PageTitle, Empty } from "../components/ui";
+import { DeckCard, DeckRow, PageTitle, Empty } from "../components/ui";
+import { ViewToggle, useDeckView } from "../components/ViewToggle";
 import { DeckEditor } from "../components/DeckEditor";
 import type { Deck } from "../types";
 export function Library({ discover = false }: { discover?: boolean }) {
   const { user, decks, catalog, auth, notify } = useStore();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All topics");
+  const [view, setView] = useDeckView(discover ? "discover" : "library");
   const [editing, setEditing] = useState<Partial<Deck> | null>(null);
   const [params, setParams] = useSearchParams();
   const input = useRef<HTMLInputElement>(null);
@@ -113,21 +115,28 @@ export function Library({ discover = false }: { discover?: boolean }) {
             </button>
           ))}
         </div>
-        <div className="search-field">
-          <Search size={17} />
-          <input
-            aria-label="Search decks"
-            placeholder="Find a little inspiration…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+        <div className="toolbar-right">
+          <ViewToggle view={view} onChange={setView} />
+          <div className="search-field">
+            <Search size={17} />
+            <input
+              aria-label="Search decks"
+              placeholder="Find a little inspiration…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
         </div>
       </div>
       {filtered.length ? (
-        <div className="deck-grid">
-          {filtered.map((d) => (
-            <DeckCard key={d.id} deck={d} discover={discover} />
-          ))}
+        <div className={view === "grid" ? "deck-grid" : "deck-list"}>
+          {filtered.map((d) =>
+            view === "grid" ? (
+              <DeckCard key={d.id} deck={d} discover={discover} />
+            ) : (
+              <DeckRow key={d.id} deck={d} discover={discover} />
+            ),
+          )}
         </div>
       ) : (
         <Empty

@@ -82,6 +82,42 @@ export function DeckIcon({
             : Layers;
   return <Icon size={size} strokeWidth={1.6} />;
 }
+export function DeckRow({
+  deck,
+  discover = false,
+}: {
+  deck: Deck;
+  discover?: boolean;
+}) {
+  const due = dueCards(deck).length;
+  return (
+    <Link
+      className={`deck-row ${deck.color}`}
+      to={`${discover ? "/discover" : "/decks"}/${deck.id}`}
+    >
+      <span className="row-glyph">
+        <DeckIcon icon={deck.icon} size={20} />
+      </span>
+      <span className="row-main">
+        <strong>{deck.title}</strong>
+        <small>{deck.description}</small>
+      </span>
+      <span className="row-category">{deck.category}</span>
+      <span className="row-count">
+        <Layers size={13} />
+        {deck.cards.length}
+      </span>
+      {discover ? (
+        <span className="collection-label">Starter</span>
+      ) : (
+        <span className={due ? "due-label" : "muted"}>
+          {due ? `${due} due` : "Caught up"}
+        </span>
+      )}
+      <ArrowUpRight size={16} className="row-arrow" />
+    </Link>
+  );
+}
 export function DeckCard({
   deck,
   discover = false,

@@ -4244,3 +4244,191 @@ summary:focus-visible,
     width: 100%;
   }
 }
+
+/* ============================================================
+   List layout — the default for the library and Discover.
+   A row is the same card material laid flat: one line per deck so
+   a long shelf stays scannable, with grid as the visual option.
+   ============================================================ */
+.view-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #eff5f0;
+}
+.view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: transparent;
+  color: #5c6e58;
+}
+.view-toggle button.active {
+  background: #fff;
+  color: #1f5c39;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(31, 84, 55, 0.1);
+}
+.deck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.deck-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+.deck-row:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  border-color: #cfe3d4;
+}
+.row-glyph {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--color, #eef4ea);
+  color: #2f8a55;
+}
+.peach .row-glyph {
+  color: #e0713d;
+}
+.lilac .row-glyph {
+  color: #7a58cc;
+}
+.blue .row-glyph {
+  color: #2f8cb3;
+}
+.yellow .row-glyph {
+  color: #c1871a;
+}
+.row-main {
+  flex: 1;
+  min-width: 0;
+}
+.row-main strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-main small {
+  display: block;
+  font-size: 10px;
+  color: #5f6b55;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-category,
+.row-author {
+  font-size: 10px;
+  color: #5f6b55;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.row-author {
+  font-style: italic;
+}
+.row-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #5f6b55;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.deck-row .due-label,
+.deck-row .collection-label,
+.deck-row .muted {
+  font-size: 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.row-arrow {
+  color: #a3b09d;
+  flex-shrink: 0;
+}
+.deck-row:hover .row-arrow {
+  color: var(--green);
+}
+.deck-row.shared .vote {
+  flex-shrink: 0;
+}
+.deck-row.shared .button {
+  flex-shrink: 0;
+}
+/* Progressive shedding: the least essential columns go first so a row
+   never wraps into an unreadable block on a narrow screen. */
+@media (max-width: 1190px) {
+  .row-category {
+    display: none;
+  }
+}
+@media (max-width: 1000px) {
+  .row-author {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .deck-row {
+    gap: 10px;
+    padding: 11px 12px;
+  }
+  .row-count {
+    display: none;
+  }
+  .row-main small {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .row-main strong {
+    white-space: normal;
+  }
+  /* The title needs the width here, so the save action becomes an icon
+     and the artwork glyph steps out rather than truncating the name. */
+  .deck-row.shared .row-glyph {
+    display: none;
+  }
+  .deck-row.shared .button span,
+  .deck-row.shared .button {
+    font-size: 0;
+    gap: 0;
+    min-height: 32px;
+    padding: 8px;
+  }
+  .deck-row.shared .button svg {
+    font-size: 13px;
+  }
+  .view-toggle button span {
+    display: none;
+  }
+  .view-toggle button {
+    padding: 6px 8px;
+  }
+}
