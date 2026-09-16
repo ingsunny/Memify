@@ -2,7 +2,7 @@ import express from "express";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { rateLimit } from "express-rate-limit";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { existsSync } from "node:fs";
 import { z } from "zod";
@@ -943,6 +943,36 @@ export function createApp({
         row.id,
       );
     res.json(deckFor(req.user.id, id));
+  });
+
+  // ---- Signed image uploads --------------------------------------------
+  // The browser uploads directly to Cloudinary, but only with a signature
+  // minted here. The API secret never reaches the client, and an upload
+  // cannot be forged or made by anyone without an account.
+  app.post("/api/uploads/sign", auth, (req, res) => {
+    if (!config.cloudinaryKey || !config.cloudinarySecret || !config.cloudinaryName)
+      throw fail(503, "Image uploads are not configured on this installation.");
+    const timestamp = Math.floor(Date.now() / 1000);
+    // Folder and timestamp are pinned server-side, so a caller cannot
+    // redirect the upload elsewhere in the account.
+    const params = {
+      folder: "memify",
+      timestamp: String(timestamp),
+    };
+    const signature = createHash("sha1")
+      .update(
+        Object.keys(params)
+          .sort()
+          .map((k) => `${k}=${params[k]}`)
+          .join("&") + config.cloudinarySecret,
+      )
+      .digest("hex");
+    res.json({
+      cloudName: config.cloudinaryName,
+      apiKey: config.cloudinaryKey,
+      ...params,
+      signature,
+    });
   });
 
   // ---- Notepad ---------------------------------------------------------

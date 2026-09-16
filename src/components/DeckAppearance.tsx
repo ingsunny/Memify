@@ -1,6 +1,7 @@
 import { Suspense, lazy, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DynamicIcon } from "./DynamicIcon";
+import { send } from "../api";
 import {
   Layers,
   Brain,
@@ -52,21 +53,31 @@ export const palette = [
   { id: "yellow", hex: "#ffe6b8" },
 ];
 
-// Unsigned preset: the browser uploads straight to Cloudinary so the
-// image never travels through our server and no signing secret is
-// exposed. The deck stores only the resulting URL.
-const CLOUD_NAME = "dqmr455zn";
-const UPLOAD_PRESET = "memify";
-
+/**
+ * Uploads go straight from the browser to Cloudinary, but only with a
+ * signature minted by our server for a signed-in account. The API secret
+ * stays server-side, and the folder and timestamp are fixed when the
+ * signature is made, so a caller cannot redirect the upload or reuse it
+ * indefinitely.
+ */
 export async function uploadBanner(file: File) {
   if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
   if (file.size > 5_000_000) throw new Error("Choose an image under 5 MB.");
+  const auth = await send<{
+    cloudName: string;
+    apiKey: string;
+    folder: string;
+    timestamp: string;
+    signature: string;
+  }>("/uploads/sign");
   const body = new FormData();
   body.append("file", file);
-  body.append("upload_preset", UPLOAD_PRESET);
-  body.append("folder", "memify");
+  body.append("api_key", auth.apiKey);
+  body.append("timestamp", auth.timestamp);
+  body.append("folder", auth.folder);
+  body.append("signature", auth.signature);
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${auth.cloudName}/image/upload`,
     { method: "POST", body },
   );
   const data = await response.json().catch(() => ({}));

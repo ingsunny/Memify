@@ -7,6 +7,11 @@ const config = {
   cloudUrl: env.CLOUD_URL || "",
   cloudSecret: env.CLOUD_SHARED_SECRET || "",
   trustProxy: env.TRUST_PROXY === "1",
+  // Cloudinary. The secret signs uploads server-side and is never sent
+  // to the browser; the cloud name and key are public by design.
+  cloudinaryName: env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryKey: env.CLOUDINARY_API_KEY,
+  cloudinarySecret: env.CLOUDINARY_API_SECRET,
   smtpHost: env.SMTP_HOST,
   smtpPort: Number(env.SMTP_PORT || 587),
   smtpUser: env.SMTP_USER,
